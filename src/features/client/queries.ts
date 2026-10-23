@@ -1,6 +1,7 @@
 // Client-portal data hooks. UI → hooks → services → mocks.
 // Every call here excludes drafts and is scoped to one client.
 import { queryOptions, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 import { getClient } from "@/services/clients";
 import { listClientPackages } from "@/services/packages";
@@ -37,6 +38,11 @@ export function useTogglePublished(actor: Actor) {
   return useMutation({
     mutationFn: ({ postId, published }: { postId: string; published: boolean }) =>
       published ? markPostPublished(postId, actor) : unmarkPostPublished(postId, actor),
-    onSuccess: () => qc.invalidateQueries(),
+    onSuccess: (post) =>
+      Promise.all([
+        qc.invalidateQueries({ queryKey: ["portal", post.client_id] }),
+        qc.invalidateQueries({ queryKey: ["admin"] }),
+      ]),
+    onError: (error) => toast.error(error.message || "Não foi possível atualizar a publicação."),
   });
 }
