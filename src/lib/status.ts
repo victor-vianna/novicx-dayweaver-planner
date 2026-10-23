@@ -9,7 +9,10 @@ import type { Post } from "@/types/domain";
  */
 export type DisplayStatus = "draft" | "ready" | "pending" | "published";
 
-export function getDisplayStatus(post: Pick<Post, "status" | "scheduled_date">, today: string): DisplayStatus {
+export function getDisplayStatus(
+  post: Pick<Post, "status" | "scheduled_date">,
+  today: string,
+): DisplayStatus {
   if (post.status === "draft") return "draft";
   if (post.status === "published") return "published";
   return post.scheduled_date < today ? "pending" : "ready";

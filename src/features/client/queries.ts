@@ -20,7 +20,10 @@ export const portalPostsQuery = (clientId: string) =>
   queryOptions({ queryKey: portalKeys.posts(clientId), queryFn: () => listPosts({ clientId }) });
 
 export const portalPackagesQuery = (clientId: string) =>
-  queryOptions({ queryKey: portalKeys.packages(clientId), queryFn: () => listClientPackages(clientId) });
+  queryOptions({
+    queryKey: portalKeys.packages(clientId),
+    queryFn: () => listClientPackages(clientId),
+  });
 
 export const portalPostQuery = (clientId: string, postId: string) =>
   queryOptions({

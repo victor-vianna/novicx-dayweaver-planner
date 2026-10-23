@@ -13,7 +13,13 @@ interface Props {
 }
 
 /** Cover art in 4:5 with a gentle fade-in once loaded. */
-export function PostArt({ post, className, eager, showCount = true, rounded = "rounded-2xl" }: Props) {
+export function PostArt({
+  post,
+  className,
+  eager,
+  showCount = true,
+  rounded = "rounded-2xl",
+}: Props) {
   const [loaded, setLoaded] = useState(false);
   const cover = post.media[0];
   return (

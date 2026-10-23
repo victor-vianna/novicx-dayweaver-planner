@@ -59,7 +59,10 @@ export function canShareFiles() {
   );
 }
 
-export async function saveImages(items: ShareItem[], opts: { zipName?: string } = {}): Promise<SaveResult> {
+export async function saveImages(
+  items: ShareItem[],
+  opts: { zipName?: string } = {},
+): Promise<SaveResult> {
   if (items.length === 0) throw new Error("Nenhuma imagem disponível.");
   const files = await Promise.all(items.map(getFile));
 
@@ -105,7 +108,9 @@ export function mediaFilename(title: string, index: number, total: number) {
 export function saveResultMessage(result: SaveResult, count: number) {
   switch (result) {
     case "shared":
-      return count > 1 ? "Artes enviadas para o compartilhamento" : "Arte enviada para o compartilhamento";
+      return count > 1
+        ? "Artes enviadas para o compartilhamento"
+        : "Arte enviada para o compartilhamento";
     case "zipped":
       return `Arquivo .zip com ${count} artes baixado`;
     case "downloaded":

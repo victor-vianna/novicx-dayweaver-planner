@@ -20,12 +20,21 @@ export function useCopyCaption() {
   return { copied, copy };
 }
 
-export function CaptionBlock({ caption, className }: { caption: string | null; className?: string }) {
+export function CaptionBlock({
+  caption,
+  className,
+}: {
+  caption: string | null;
+  className?: string;
+}) {
   const { copied, copy } = useCopyCaption();
 
   if (!caption) {
     return (
-      <section className={cn("rounded-2xl border border-border bg-surface p-4", className)} aria-label="Legenda">
+      <section
+        className={cn("rounded-2xl border border-border bg-surface p-4", className)}
+        aria-label="Legenda"
+      >
         <div className="flex items-start gap-3">
           <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-surface-2 text-muted-foreground">
             <FileText className="h-4 w-4" aria-hidden />
@@ -42,7 +51,10 @@ export function CaptionBlock({ caption, className }: { caption: string | null; c
   }
 
   return (
-    <section className={cn("rounded-2xl border border-border bg-surface", className)} aria-label="Legenda">
+    <section
+      className={cn("rounded-2xl border border-border bg-surface", className)}
+      aria-label="Legenda"
+    >
       <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
         <h2 className="text-sm font-semibold text-foreground">Legenda</h2>
         <button
@@ -50,14 +62,22 @@ export function CaptionBlock({ caption, className }: { caption: string | null; c
           onClick={() => copy(caption)}
           className={cn(
             "pressable inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-[13px] font-semibold",
-            copied ? "bg-success-soft text-success" : "bg-primary-soft text-primary-glow hover:bg-primary/25",
+            copied
+              ? "bg-success-soft text-success"
+              : "bg-primary-soft text-primary-glow hover:bg-primary/25",
           )}
         >
-          {copied ? <Check className="h-4 w-4" aria-hidden /> : <Copy className="h-4 w-4" aria-hidden />}
+          {copied ? (
+            <Check className="h-4 w-4" aria-hidden />
+          ) : (
+            <Copy className="h-4 w-4" aria-hidden />
+          )}
           {copied ? "Copiada" : "Copiar legenda"}
         </button>
       </div>
-      <p className="whitespace-pre-line px-4 py-4 text-[14.5px] leading-relaxed text-foreground/90">{caption}</p>
+      <p className="whitespace-pre-line px-4 py-4 text-[14.5px] leading-relaxed text-foreground/90">
+        {caption}
+      </p>
     </section>
   );
 }

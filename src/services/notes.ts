@@ -11,7 +11,11 @@ export async function listNotes(clientId: string): Promise<InternalNote[]> {
   );
 }
 
-export async function addNote(clientId: string, body: string, postId: string | null = null): Promise<InternalNote> {
+export async function addNote(
+  clientId: string,
+  body: string,
+  postId: string | null = null,
+): Promise<InternalNote> {
   await delay();
   const note: InternalNote = {
     id: uid("n"),

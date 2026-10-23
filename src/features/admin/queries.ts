@@ -8,15 +8,22 @@ import { listPlans } from "@/services/plans";
 import { getPost, listPosts, listUpcomingDeliveries } from "@/services/posts";
 
 export const adminClientsQuery = (includeArchived = true) =>
-  queryOptions({ queryKey: ["admin", "clients", includeArchived], queryFn: () => listClients({ includeArchived }) });
+  queryOptions({
+    queryKey: ["admin", "clients", includeArchived],
+    queryFn: () => listClients({ includeArchived }),
+  });
 
 export const adminClientQuery = (id: string) =>
   queryOptions({ queryKey: ["admin", "client", id], queryFn: () => getClient(id) });
 
-export const adminPlansQuery = () => queryOptions({ queryKey: ["admin", "plans"], queryFn: listPlans });
+export const adminPlansQuery = () =>
+  queryOptions({ queryKey: ["admin", "plans"], queryFn: listPlans });
 
 export const adminPackagesQuery = (clientId: string) =>
-  queryOptions({ queryKey: ["admin", "packages", clientId], queryFn: () => listClientPackages(clientId) });
+  queryOptions({
+    queryKey: ["admin", "packages", clientId],
+    queryFn: () => listClientPackages(clientId),
+  });
 
 export const adminActivePackagesQuery = () =>
   queryOptions({ queryKey: ["admin", "packages", "active"], queryFn: listAllActivePackages });
@@ -28,7 +35,10 @@ export const adminPostsQuery = (clientId: string) =>
   });
 
 export const adminPostQuery = (id: string) =>
-  queryOptions({ queryKey: ["admin", "post", id], queryFn: () => getPost(id, { includeDrafts: true }) });
+  queryOptions({
+    queryKey: ["admin", "post", id],
+    queryFn: () => getPost(id, { includeDrafts: true }),
+  });
 
 export const adminNotesQuery = (clientId: string) =>
   queryOptions({ queryKey: ["admin", "notes", clientId], queryFn: () => listNotes(clientId) });

@@ -1,7 +1,10 @@
 import { clone, commit, delay, getDB, uid } from "@/mocks/store";
 import type { Client } from "@/types/domain";
 
-export type ClientInput = Pick<Client, "display_name" | "business_name" | "profession" | "email" | "phone">;
+export type ClientInput = Pick<
+  Client,
+  "display_name" | "business_name" | "profession" | "email" | "phone"
+>;
 
 export async function listClients(opts: { includeArchived?: boolean } = {}): Promise<Client[]> {
   await delay();

@@ -29,7 +29,9 @@ export function PostListItem({ post, today, subtitle, className, onOpen }: Props
     <>
       <PostArt post={post} className="w-14 shrink-0" rounded="rounded-lg" showCount={false} />
       <div className="min-w-0 flex-1">
-        {subtitle && <p className="truncate text-[11.5px] font-medium text-subtle-foreground">{subtitle}</p>}
+        {subtitle && (
+          <p className="truncate text-[11.5px] font-medium text-subtle-foreground">{subtitle}</p>
+        )}
         <p className="truncate text-[14.5px] font-semibold text-foreground">{post.title}</p>
         <p className="mt-0.5 truncate text-[12.5px] text-muted-foreground">
           {dateText} · {formatLabel(post)}

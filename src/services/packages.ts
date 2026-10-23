@@ -14,7 +14,9 @@ export async function listClientPackages(clientId: string): Promise<ClientPackag
 
 export async function getActivePackage(clientId: string): Promise<ClientPackage | null> {
   await delay(160);
-  return clone(getDB().packages.find((p) => p.client_id === clientId && p.status === "active") ?? null);
+  return clone(
+    getDB().packages.find((p) => p.client_id === clientId && p.status === "active") ?? null,
+  );
 }
 
 export async function listAllActivePackages(): Promise<ClientPackage[]> {
@@ -44,7 +46,11 @@ interface AssignInput {
  * Contracts a catalog plan for a client: snapshots name/quantity, closes the
  * previous active package and creates draft slots spread over allowed weekdays.
  */
-export async function assignPlan({ clientId, planId, startDate }: AssignInput): Promise<ClientPackage> {
+export async function assignPlan({
+  clientId,
+  planId,
+  startDate,
+}: AssignInput): Promise<ClientPackage> {
   await delay(320);
   const db = getDB();
   const plan = db.plans.find((p) => p.id === planId);

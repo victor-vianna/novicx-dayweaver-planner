@@ -70,7 +70,10 @@ export function MonthCalendar({
         >
           <ChevronLeft className="h-5 w-5" />
         </button>
-        <p className={cn("font-semibold text-foreground", compact ? "text-sm" : "text-[15px]")} aria-live="polite">
+        <p
+          className={cn("font-semibold text-foreground", compact ? "text-sm" : "text-[15px]")}
+          aria-live="polite"
+        >
           {monthLabel(year, month)}
         </p>
         <button
@@ -85,7 +88,10 @@ export function MonthCalendar({
 
       <div className="grid grid-cols-7 text-center" aria-hidden>
         {WEEKDAYS_SHORT.map((w, i) => (
-          <span key={w} className="pb-2 text-[11px] font-semibold uppercase tracking-wide text-subtle-foreground">
+          <span
+            key={w}
+            className="pb-2 text-[11px] font-semibold uppercase tracking-wide text-subtle-foreground"
+          >
             <span className="sm:hidden">{compact ? WEEKDAYS_INITIAL[i] : w}</span>
             <span className="hidden sm:inline">{w}</span>
           </span>
@@ -94,7 +100,10 @@ export function MonthCalendar({
 
       <div
         key={`${year}-${month}`}
-        className={cn("grid grid-cols-7 gap-y-1", direction === "left" ? "slide-left" : "slide-right")}
+        className={cn(
+          "grid grid-cols-7 gap-y-1",
+          direction === "left" ? "slide-left" : "slide-right",
+        )}
         role="grid"
         aria-label={monthLabel(year, month)}
         onTouchStart={(e) => {
@@ -145,7 +154,9 @@ export function MonthCalendar({
                     <StatusDot
                       key={s}
                       status={s}
-                      className={cn(isSelected && "bg-primary-foreground border-primary-foreground")}
+                      className={cn(
+                        isSelected && "bg-primary-foreground border-primary-foreground",
+                      )}
                     />
                   ))}
                 </span>
@@ -158,10 +169,21 @@ export function MonthCalendar({
   );
 }
 
-export function CalendarLegend({ includeDraft, className }: { includeDraft?: boolean; className?: string }) {
-  const items: DisplayStatus[] = includeDraft ? ["ready", "pending", "published", "draft"] : ["ready", "pending", "published"];
+export function CalendarLegend({
+  includeDraft,
+  className,
+}: {
+  includeDraft?: boolean;
+  className?: string;
+}) {
+  const items: DisplayStatus[] = includeDraft
+    ? ["ready", "pending", "published", "draft"]
+    : ["ready", "pending", "published"];
   return (
-    <ul className={cn("flex flex-wrap items-center gap-x-4 gap-y-2", className)} aria-label="Legenda do calendário">
+    <ul
+      className={cn("flex flex-wrap items-center gap-x-4 gap-y-2", className)}
+      aria-label="Legenda do calendário"
+    >
       {items.map((s) => (
         <li key={s} className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <StatusDot status={s} className="h-2 w-2" />

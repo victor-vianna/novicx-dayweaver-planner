@@ -1,6 +1,14 @@
 // Simulated session for the prototype. Isolated so it can be swapped for real
 // auth later without touching pages. This is NOT a security boundary.
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 
 import { DEMO_ACCOUNTS } from "@/mocks/seed";
 import { getSessionFor, signInWithPassword, type MockSession } from "@/services/auth";
@@ -113,7 +121,16 @@ export function MockAuthProvider({ children }: { children: ReactNode }) {
   }, [session]);
 
   const value = useMemo(
-    () => ({ status, session, previewClientId, signIn, signInAsDemo, signOut, startPreview, stopPreview }),
+    () => ({
+      status,
+      session,
+      previewClientId,
+      signIn,
+      signInAsDemo,
+      signOut,
+      startPreview,
+      stopPreview,
+    }),
     [status, session, previewClientId, signIn, signInAsDemo, signOut, startPreview, stopPreview],
   );
 

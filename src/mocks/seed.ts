@@ -451,5 +451,15 @@ export function createSeed(now: Date = new Date()): MockDB {
     },
   ];
 
-  return { version: DB_VERSION, seededFor: today, profiles, clients, plans, packages, posts, media, notes };
+  return {
+    version: DB_VERSION,
+    seededFor: today,
+    profiles,
+    clients,
+    plans,
+    packages,
+    posts,
+    media,
+    notes,
+  };
 }

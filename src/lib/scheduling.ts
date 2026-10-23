@@ -19,7 +19,13 @@ interface DistributeInput {
  * (inclusive). Pure and deterministic — no AI, no randomness.
  * When there are enough allowed days, no day receives two posts.
  */
-export function distributeSlots({ startDate, endDate, count, weekdays, times }: DistributeInput): Slot[] {
+export function distributeSlots({
+  startDate,
+  endDate,
+  count,
+  weekdays,
+  times,
+}: DistributeInput): Slot[] {
   if (count <= 0) return [];
   const span = diffDays(endDate, startDate);
   if (span < 0) return [];
