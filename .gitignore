@@ -33,3 +33,8 @@ dist-ssr
 
 # graft's local graph cache — regenerable, not committed (run `graft build`).
 /graft/
+
+# Local env (copy from .env.example). Never commit secrets.
+.env
+.env.*
+!.env.example
