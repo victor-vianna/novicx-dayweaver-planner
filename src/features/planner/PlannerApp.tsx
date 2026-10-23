@@ -67,7 +67,7 @@ import {
 import { getDisplayStatus } from "@/lib/status";
 import { cn } from "@/lib/utils";
 import { DEMO_LOGIN_PREFILL } from "@/services/auth";
-import type { Client, ClientPackage, PostWithMedia } from "@/types/domain";
+import type { Actor, Client, ClientPackage, PostWithMedia } from "@/types/domain";
 
 type ClientView = "overview" | "calendar";
 type AdminView = "overview" | "clients";
@@ -895,8 +895,13 @@ function PostDetail({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
+  const { session } = useAuth();
   const save = useSaveArt(post);
-  const togglePublished = useTogglePublished();
+  const actor: Actor =
+    session?.profile.role === "admin"
+      ? { role: "admin" }
+      : { role: "client", clientId: session?.client?.id ?? "__missing_client__" };
+  const togglePublished = useTogglePublished(actor);
   const [artIndex, setArtIndex] = useState(0);
   if (!post) return null;
   const status = getDisplayStatus(post, today);

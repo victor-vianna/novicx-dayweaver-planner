@@ -1,6 +1,11 @@
 import { addDays, todayISO } from "@/lib/dates";
 import { clone, commit, delay, getDB, uid } from "@/mocks/store";
-import type { Post, PostMedia, PostWithMedia } from "@/types/domain";
+import type { Actor, Post, PostMedia, PostWithMedia } from "@/types/domain";
+
+// Future RLS must reproduce this boundary: clients may read only their own
+// non-draft posts and may change publication status only on those posts.
+// Admin operations remain unrestricted, while drafts stay unavailable to the
+// client portal and cannot be marked as published by either role.
 
 interface ListOpts {
   clientId?: string;
@@ -64,22 +69,29 @@ export async function updatePost(id: string, patch: PostPatch): Promise<PostWith
   return clone(withMedia(post));
 }
 
-export async function markPostPublished(id: string): Promise<PostWithMedia> {
-  await delay(260);
+function postForActor(id: string, actor: Actor) {
   const post = getDB().posts.find((p) => p.id === id);
-  if (!post) throw new Error("Publicação não encontrada");
+  if (!post || (actor.role === "client" && post.client_id !== actor.clientId)) {
+    throw new Error("Publicação não encontrada");
+  }
+  return post;
+}
+
+export async function markPostPublished(id: string, actor: Actor): Promise<PostWithMedia> {
+  await delay(260);
+  const post = postForActor(id, actor);
   if (post.status === "draft") throw new Error("Esta publicação ainda não está disponível");
   post.status = "published";
   post.published_at = new Date().toISOString();
-  post.published_by = "client";
+  post.published_by = actor.role;
   commit();
   return clone(withMedia(post));
 }
 
-export async function unmarkPostPublished(id: string): Promise<PostWithMedia> {
+export async function unmarkPostPublished(id: string, actor: Actor): Promise<PostWithMedia> {
   await delay(200);
-  const post = getDB().posts.find((p) => p.id === id);
-  if (!post) throw new Error("Publicação não encontrada");
+  const post = postForActor(id, actor);
+  if (post.status === "draft") throw new Error("Esta publicação ainda não está disponível");
   post.status = "ready";
   post.published_at = null;
   post.published_by = null;

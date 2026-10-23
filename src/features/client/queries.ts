@@ -5,6 +5,7 @@ import { queryOptions, useMutation, useQueryClient } from "@tanstack/react-query
 import { getClient } from "@/services/clients";
 import { listClientPackages } from "@/services/packages";
 import { getPost, listPosts, markPostPublished, unmarkPostPublished } from "@/services/posts";
+import type { Actor } from "@/types/domain";
 
 export const portalKeys = {
   client: (clientId: string) => ["portal", clientId, "client"] as const,
@@ -31,11 +32,11 @@ export const portalPostQuery = (clientId: string, postId: string) =>
     queryFn: () => getPost(postId, { clientId }),
   });
 
-export function useTogglePublished() {
+export function useTogglePublished(actor: Actor) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ postId, published }: { postId: string; published: boolean }) =>
-      published ? markPostPublished(postId) : unmarkPostPublished(postId),
+      published ? markPostPublished(postId, actor) : unmarkPostPublished(postId, actor),
     onSuccess: () => qc.invalidateQueries(),
   });
 }

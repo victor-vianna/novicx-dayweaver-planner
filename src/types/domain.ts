@@ -3,6 +3,8 @@
 
 export type Role = "admin" | "client";
 
+export type Actor = { role: "client"; clientId: string } | { role: "admin" };
+
 export interface Profile {
   id: string;
   role: Role;
