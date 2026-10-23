@@ -2,12 +2,17 @@
 // Replace with real auth (invites + per-client row security) in the next stage.
 import { DEMO_ACCOUNTS } from "@/mocks/seed";
 import { clone, delay, getDB } from "@/mocks/store";
-import type { Client, Profile } from "@/types/domain";
+import type { Client, Profile, Role } from "@/types/domain";
 
 export interface MockSession {
   profile: Profile;
   client: Client | null;
 }
+
+export const DEMO_LOGIN_PREFILL = {
+  email: DEMO_ACCOUNTS.client.email,
+  password: DEMO_ACCOUNTS.client.password,
+} as const;
 
 export async function signInWithPassword(email: string, password: string): Promise<MockSession> {
   await delay(450);
@@ -17,6 +22,11 @@ export async function signInWithPassword(email: string, password: string): Promi
     throw new Error("E-mail ou senha incorretos.");
   }
   return getSessionFor(account.profileId);
+}
+
+export async function signInAsDemo(role: Role): Promise<MockSession> {
+  const account = role === "admin" ? DEMO_ACCOUNTS.admin : DEMO_ACCOUNTS.client;
+  return signInWithPassword(account.email, account.password);
 }
 
 export async function getSessionFor(profileId: string): Promise<MockSession> {

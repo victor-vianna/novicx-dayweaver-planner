@@ -1,18 +1,14 @@
 // Simulated session for the prototype. Isolated so it can be swapped for real
 // auth later without touching pages. This is NOT a security boundary.
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-  type ReactNode,
-} from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 
-import { DEMO_ACCOUNTS } from "@/mocks/seed";
-import { getSessionFor, signInWithPassword, type MockSession } from "@/services/auth";
-import type { Role } from "@/types/domain";
+import { AuthContext, type AuthStatus } from "@/features/auth/auth-context";
+import {
+  getSessionFor,
+  signInAsDemo as signInAsDemoService,
+  signInWithPassword,
+  type MockSession,
+} from "@/services/auth";
 
 const STORAGE_KEY = "novicx-planner:auth";
 
@@ -20,21 +16,6 @@ interface Stored {
   profileId: string;
   previewClientId: string | null;
 }
-
-type Status = "loading" | "signed_out" | "signed_in";
-
-interface AuthContextValue {
-  status: Status;
-  session: MockSession | null;
-  previewClientId: string | null;
-  signIn: (email: string, password: string) => Promise<MockSession>;
-  signInAsDemo: (role: Role) => Promise<MockSession>;
-  signOut: () => void;
-  startPreview: (clientId: string) => void;
-  stopPreview: () => void;
-}
-
-const AuthContext = createContext<AuthContextValue | null>(null);
 
 function readStored(): Stored | null {
   try {
@@ -55,7 +36,7 @@ function writeStored(value: Stored | null) {
 }
 
 export function MockAuthProvider({ children }: { children: ReactNode }) {
-  const [status, setStatus] = useState<Status>("loading");
+  const [status, setStatus] = useState<AuthStatus>("loading");
   const [session, setSession] = useState<MockSession | null>(null);
   const [previewClientId, setPreviewClientId] = useState<string | null>(null);
 
@@ -91,10 +72,7 @@ export function MockAuthProvider({ children }: { children: ReactNode }) {
   );
 
   const signInAsDemo = useCallback(
-    async (role: Role) => {
-      const account = role === "admin" ? DEMO_ACCOUNTS.admin : DEMO_ACCOUNTS.client;
-      return finish(await signInWithPassword(account.email, account.password));
-    },
+    async (role: "client" | "admin") => finish(await signInAsDemoService(role)),
     [finish],
   );
 
@@ -135,18 +113,4 @@ export function MockAuthProvider({ children }: { children: ReactNode }) {
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
-
-export function useAuth() {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used inside MockAuthProvider");
-  return ctx;
-}
-
-/** The client whose portal is being shown: the signed-in client, or the admin's preview target. */
-export function usePortalClientId() {
-  const { session, previewClientId } = useAuth();
-  if (!session) return null;
-  if (session.profile.role === "client") return session.client?.id ?? null;
-  return previewClientId;
 }

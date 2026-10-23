@@ -48,7 +48,7 @@ import {
   adminEndingQuery,
   adminUpcomingQuery,
 } from "@/features/admin/queries";
-import { useAuth } from "@/features/auth/MockAuthProvider";
+import { useAuth } from "@/features/auth/useAuth";
 import {
   portalClientQuery,
   portalPackagesQuery,
@@ -66,6 +66,7 @@ import {
 } from "@/lib/dates";
 import { getDisplayStatus } from "@/lib/status";
 import { cn } from "@/lib/utils";
+import { DEMO_LOGIN_PREFILL } from "@/services/auth";
 import type { Client, ClientPackage, PostWithMedia } from "@/types/domain";
 
 type ClientView = "overview" | "calendar";
@@ -101,8 +102,8 @@ function LoadingScreen() {
 
 function LoginScreen() {
   const { signIn, signInAsDemo } = useAuth();
-  const [email, setEmail] = useState("marina@exemplo.com.br");
-  const [password, setPassword] = useState("demo1234");
+  const [email, setEmail] = useState<string>(DEMO_LOGIN_PREFILL.email);
+  const [password, setPassword] = useState<string>(DEMO_LOGIN_PREFILL.password);
   const [busy, setBusy] = useState<"form" | "client" | "admin" | null>(null);
   const [error, setError] = useState("");
 
