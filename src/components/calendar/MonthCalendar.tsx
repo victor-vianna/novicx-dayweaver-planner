@@ -98,12 +98,15 @@ export function MonthCalendar({
         role="grid"
         aria-label={monthLabel(year, month)}
         onTouchStart={(e) => {
-          touch.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+          const t = e.touches[0];
+          if (t) touch.current = { x: t.clientX, y: t.clientY };
         }}
         onTouchEnd={(e) => {
           if (!touch.current) return;
-          const dx = e.changedTouches[0].clientX - touch.current.x;
-          const dy = e.changedTouches[0].clientY - touch.current.y;
+          const t = e.changedTouches[0];
+          if (!t) return;
+          const dx = t.clientX - touch.current.x;
+          const dy = t.clientY - touch.current.y;
           touch.current = null;
           if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.4) change(dx < 0 ? 1 : -1);
         }}

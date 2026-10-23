@@ -38,14 +38,14 @@ export function distributeSlots({ startDate, endDate, count, weekdays, times }: 
   if (count <= days.length) {
     for (let i = 0; i < count; i++) {
       const idx = Math.floor((i * days.length) / count);
-      slots.push({ date: days[idx], time: safeTimes[i % safeTimes.length] });
+      slots.push({ date: days[idx]!, time: safeTimes[i % safeTimes.length]! });
     }
   } else {
     // More posts than allowed days: cycle through days, rotating times.
     for (let i = 0; i < count; i++) {
       const dayIdx = i % days.length;
       const round = Math.floor(i / days.length);
-      slots.push({ date: days[dayIdx], time: safeTimes[round % safeTimes.length] });
+      slots.push({ date: days[dayIdx]!, time: safeTimes[round % safeTimes.length]! });
     }
     slots.sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
   }
