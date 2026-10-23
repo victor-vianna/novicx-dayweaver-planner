@@ -2,81 +2,97 @@
 
 ## Objetivo
 
-Desenvolver e manter o NOVICX Planner, um PWA
-para clientes da NOVICX consultarem publicações,
-salvarem artes e copiarem legendas.
+Desenvolver e manter o NOVICX Planner, um PWA para a NOVICX **organizar,
+entregar e acompanhar** publicações das clientes. As clientes consultam
+publicações, salvam artes e copiam legendas; a equipe envia os materiais prontos.
 
-Stack atual:
-React, TypeScript, Vite, Tailwind e shadcn/ui.
+O app **não** é editor de conteúdo: nada de editor de artes, geração de texto
+por IA ou publicação automática em redes sociais.
 
-O projeto utiliza dados fictícios nesta fase.
-Não integrar Supabase sem autorização.
+Stack: TanStack Start (React 19, SSR, alvo Cloudflare Workers), TypeScript,
+Vite, Tailwind 4, shadcn/ui, React Query e Supabase (Postgres, Auth, Storage).
 
-## Hierarquia
+## Supabase
 
-Claude Code:
-- Arquiteto principal.
-- Responsável pelo planejamento.
-- Responsável pela revisão independente.
-- Pode delegar análises a subagentes.
+- Gerenciado **somente pelo Supabase CLI**: migrations em `supabase/migrations/`,
+  testes em `supabase/tests/`, seed fictício em `supabase/seed.sql`.
+- Não usar a integração automática do Lovable para criar tabelas, políticas ou auth.
+- Desenvolvimento e testes no stack local (Docker).
+- `VITE_DATA_SOURCE=mock` mantém o modo demonstração com dados fictícios;
+  `supabase` usa o backend. O modo mock deve continuar funcionando.
 
-Codex:
-- Responsável pela implementação.
-- Pode delegar tarefas a agentes especializados.
-- Executa testes e corrige problemas.
-- Documenta alterações realizadas.
+## Responsabilidades
+
+Claude Code — líder técnico e executor do backend:
+- Arquitetura e planejamento (`docs/PLANO-ATUAL.md`).
+- Banco, migrations, RLS, autenticação e Storage.
+- Integração dos services e entrega administrativa de materiais.
+- Revisão das entregas do Codex.
+- Registra entregas em `docs/ENTREGA-CLAUDE.md`.
+
+Codex — ajustes e revisão independente:
+- Ajustes pontuais de interface, correções menores e acessibilidade.
+- Testes específicos.
+- Revisão independente das alterações críticas do Claude
+  (SQL, RLS, Storage, auth), registrada em `docs/REVISAO-CODEX.md`.
+- Registra entregas em `docs/ENTREGA-CODEX.md`.
+
+Nenhum agente aprova a própria implementação.
+
+## Trabalho paralelo
+
+- Cada agente trabalha em branch ou worktree próprio
+  (`claude/<ciclo>`, `codex/<ciclo>`).
+- Cada arquivo tem um único dono por vez; as travas ficam em `docs/PLANO-ATUAL.md`.
+- Commits na `main` sincronizam com o Lovable: só fazer merge de trabalho revisado
+  e manter a `main` funcionando. Não reescrever histórico já publicado.
 
 ## Autonomia
 
 Os agentes podem, sem autorização adicional:
-- Corrigir bugs.
-- Refatorar código de baixo risco.
-- Criar e executar testes.
-- Melhorar organização interna.
-- Implementar tarefas previstas no plano aprovado.
+- Implementar tarefas do plano aprovado.
+- Corrigir bugs e problemas apontados em revisão.
+- Refatorar código de baixo risco quando houver benefício direto.
+- Criar e executar testes e migrations **locais**.
 - Escolher soluções técnicas equivalentes.
-- Corrigir problemas identificados na revisão.
 
 ## Aprovação obrigatória
 
 Solicitar autorização antes de:
-- Alterar significativamente o design aprovado.
-- Ampliar o escopo do produto.
-- Contratar serviços ou gerar custos.
+- Criar ou conectar projetos Supabase remotos.
+- Aplicar migrations ou alterar políticas/permissões em bancos remotos
+  (apresentar antes o resumo, ex.: `supabase db push --dry-run`).
 - Modificar ambientes de produção.
-- Aplicar migrations em bancos remotos.
-- Alterar permissões sensíveis.
+- Contratar serviços ou gerar custos.
+- Alterar significativamente o design aprovado ou ampliar o escopo.
 - Excluir dados ou arquivos importantes.
-- Executar operações destrutivas no Git.
+- Executar operações destrutivas no Git ou no banco.
 
 ## Segurança
 
-- Nunca expor credenciais.
-- Nunca colocar service_role no frontend.
-- Não executar comandos destrutivos sem aprovação.
+- Nunca expor credenciais nem versionar `.env`.
+- Nunca usar `service_role` no frontend ou no repositório.
+- Isolamento entre clientes garantido por RLS e provado por testes.
 - Não alterar dados reais de clientes.
 - Não conectar serviços externos sem autorização.
 
 ## Qualidade
 
-- Preservar o visual existente.
-- Executar build, lint e testes disponíveis.
+- Preservar o visual existente e reutilizar componentes.
+- Rodar verificações direcionadas durante o trabalho e a suíte completa
+  (`tsc`, lint, `vitest`, `db:test`, build) nos marcos.
 - Não afirmar que testes passaram sem executá-los.
 - Registrar falhas e limitações.
-- Fazer commits pequenos e descritivos.
-- Não modificar arquivos simultaneamente
-  com outro agente.
+- Commits pequenos e descritivos.
 
 ## Fluxo
 
-1. Claude analisa e planeja.
-2. Codex implementa.
-3. Codex registra a entrega.
-4. Claude revisa.
-5. Codex corrige os problemas.
-6. Claude valida novamente.
-7. O ciclo termina quando os critérios
-   de aceitação forem cumpridos.
+1. Claude planeja e implementa o backend e as tarefas complexas.
+2. Codex executa ajustes pontuais em paralelo, sem conflito de arquivos.
+3. Cada agente registra sua entrega.
+4. Mudanças críticas do Claude são revisadas pelo Codex; entregas do Codex são
+   revisadas pelo Claude.
+5. O autor corrige; o revisor valida.
+6. O ciclo termina quando os critérios de aceitação forem cumpridos.
 
-Se surgir uma decisão que exige autorização,
-interromper somente a parte afetada.
+Se surgir uma decisão que exige autorização, interromper somente a parte afetada.

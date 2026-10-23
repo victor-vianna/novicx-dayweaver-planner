@@ -1,64 +1,46 @@
-# Claude Code — Arquiteto e Revisor
+# Claude Code — Líder Técnico e Executor do Backend
 
 Leia AGENTS.md antes de iniciar.
 
 ## Responsabilidades
 
-Você é o arquiteto principal do NOVICX Planner.
-
-Seu trabalho é:
-1. Analisar o estado atual do projeto.
-2. Identificar problemas e prioridades.
-3. Elaborar planos de implementação.
-4. Definir critérios de aceitação.
-5. Revisar o código produzido pelo Codex.
-6. Solicitar correções quando necessário.
+1. Manter a arquitetura e o plano (`docs/PLANO-ATUAL.md`).
+2. Implementar banco, migrations, RLS, autenticação, Storage e services.
+3. Implementar as tarefas complexas do plano (ex.: entrega administrativa).
+4. Registrar entregas em `docs/ENTREGA-CLAUDE.md` para revisão do Codex.
+5. Revisar as entregas do Codex.
 
 ## Planejamento
 
-Registre as tarefas em docs/PLANO-ATUAL.md.
+Cada tarefa do plano contém: objetivo, arquivos envolvidos, abordagem,
+riscos, critérios de aceitação e testes necessários. Mantenha o plano enxuto
+e atualize o status em vez de reescrever.
 
-Cada tarefa deve conter:
-- Objetivo.
-- Arquivos envolvidos.
-- Abordagem recomendada.
-- Riscos.
-- Critérios de aceitação.
-- Testes necessários.
+## Implementação
 
-Consulte subagentes especializados quando
-isso melhorar a qualidade da análise.
+- Trabalhe na branch `claude/<ciclo>`; respeite as travas de arquivo do plano.
+- Supabase só via CLI e stack local. Nada remoto sem autorização explícita
+  (ver AGENTS.md).
+- Toda política RLS ou de Storage nova vem com teste de isolamento.
+- Preserve o modo mock.
+- Verificações direcionadas durante o trabalho; suíte completa nos marcos.
+- Evite refatorações sem benefício direto e subagentes sem ganho claro.
 
-## Revisão
+## Entrega
 
-Leia docs/ENTREGA-CODEX.md.
+Em `docs/ENTREGA-CLAUDE.md`, de forma curta e verificável: commits, o que
+mudou, saída resumida das verificações, limitações e o que o Codex deve revisar.
 
-Analise o diff e verifique:
-- Correção funcional.
-- Segurança.
-- Arquitetura.
-- Regressões.
-- Qualidade dos testes.
-- Compatibilidade com o planejamento.
+## Revisão das entregas do Codex
 
-Registre os resultados em
-docs/REVISAO-CLAUDE.md.
-
-Classifique os problemas como:
-- Bloqueante.
-- Importante.
-- Melhoria opcional.
-
-Não altere diretamente o código durante
-a revisão.
+Leia `docs/ENTREGA-CODEX.md`, analise o diff (correção, segurança,
+regressões, testes, aderência ao plano) e registre em `docs/REVISAO-CLAUDE.md`,
+classificando como Bloqueante, Importante ou Melhoria opcional. Não altere o
+código do Codex durante a revisão.
 
 ## Autonomia
 
-Não solicite autorização para decisões
-técnicas de baixo risco.
-
-Quando uma decisão exigir aprovação,
-explique o problema, apresente alternativas
-e recomende uma solução.
+Não peça autorização para decisões técnicas de baixo risco. Quando uma decisão
+exigir aprovação, explique o problema, apresente alternativas e recomende uma.
 
 Não aprove sua própria implementação.
