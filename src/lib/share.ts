@@ -82,7 +82,8 @@ export async function saveImages(items: ShareItem[], opts: { zipName?: string } 
     return "zipped";
   }
 
-  triggerDownload(files[0], files[0].name);
+  const first = files[0]!;
+  triggerDownload(first, first.name);
   return "downloaded";
 }
 

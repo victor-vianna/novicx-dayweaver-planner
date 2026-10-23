@@ -32,7 +32,7 @@ export function useSaveArt(post: Pick<PostWithMedia, "title" | "media"> | null |
 
   return {
     busy,
-    saveOne: (index: number) => post && run([shareItemsFor(post)[index]].filter(Boolean), "one"),
+    saveOne: (index: number) => post && run([shareItemsFor(post)[index]].filter((x): x is ShareItem => Boolean(x)), "one"),
     saveAll: () => post && run(shareItemsFor(post), "all"),
   };
 }

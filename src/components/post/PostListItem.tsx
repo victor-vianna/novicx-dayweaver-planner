@@ -1,4 +1,3 @@
-import { Link } from "@tanstack/react-router";
 import { ChevronRight } from "lucide-react";
 
 import { formatShort, formatWeekdayShort, relativeDayLabel } from "@/lib/dates";
@@ -14,6 +13,7 @@ interface Props {
   audience?: "client" | "admin";
   subtitle?: string;
   className?: string;
+  onOpen?: (postId: string) => void;
 }
 
 export function formatLabel(post: Pick<PostWithMedia, "format" | "media">) {
@@ -21,7 +21,7 @@ export function formatLabel(post: Pick<PostWithMedia, "format" | "media">) {
   return "Post único";
 }
 
-export function PostListItem({ post, today, audience = "client", subtitle, className }: Props) {
+export function PostListItem({ post, today, subtitle, className, onOpen }: Props) {
   const status = getDisplayStatus(post, today);
   const rel = relativeDayLabel(post.scheduled_date, today);
   const dateText = `${rel ?? `${formatWeekdayShort(post.scheduled_date)}, ${formatShort(post.scheduled_date)}`} · ${post.scheduled_time}`;
@@ -43,13 +43,10 @@ export function PostListItem({ post, today, audience = "client", subtitle, class
     "pressable flex items-center gap-3.5 rounded-2xl border border-border bg-surface p-2.5 pr-3.5 hover:border-border-strong hover:bg-surface-2",
     className,
   );
-  return audience === "admin" ? (
-    <Link to="/admin/posts/$id" params={{ id: post.id }} className={cls}>
+  // Detail pages are not built yet; the parent decides where a tap leads.
+  return (
+    <button type="button" onClick={() => onOpen?.(post.id)} className={cn(cls, "w-full text-left")}>
       {content}
-    </Link>
-  ) : (
-    <Link to="/app/post/$id" params={{ id: post.id }} className={cls}>
-      {content}
-    </Link>
+    </button>
   );
 }

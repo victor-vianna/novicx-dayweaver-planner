@@ -31,7 +31,7 @@ export function toISO(y: number, m: number, d: number) {
 }
 
 export function parseISO(iso: string) {
-  const [y, m, d] = iso.split("-").map(Number);
+  const [y = 1970, m = 1, d = 1] = iso.split("-").map(Number);
   return { y, m, d };
 }
 
@@ -103,7 +103,7 @@ export function monthGrid(y: number, m: number) {
 }
 
 export function monthLabel(y: number, m: number) {
-  const name = MONTHS[m - 1];
+  const name = MONTHS[m - 1] ?? "";
   return `${name.charAt(0).toUpperCase()}${name.slice(1)} ${y}`;
 }
 
