@@ -8,6 +8,7 @@ import { WorkspaceSkeleton } from "@/components/common/WorkspaceStates";
 import { AppFrame } from "@/components/layout/AppFrame";
 import { PostListItem } from "@/components/post/PostListItem";
 import { ClientCard } from "@/features/admin/ClientCard";
+import { ClientDelivery } from "@/features/admin/delivery/ClientDelivery";
 import {
   adminActivePackagesQuery,
   adminClientsQuery,
@@ -22,6 +23,7 @@ type AdminView = "overview" | "clients";
 export function AdminWorkspace() {
   const [view, setView] = useState<AdminView>("overview");
   const [menuOpen, setMenuOpen] = useState(false);
+  const [deliveryClientId, setDeliveryClientId] = useState<string | null>(null);
   const { session, startPreview } = useAuth();
   const clientsQuery = useQuery(adminClientsQuery(false));
   const packagesQuery = useQuery(adminActivePackagesQuery());
@@ -68,9 +70,21 @@ export function AdminWorkspace() {
         { id: "clients", label: "Clientes", icon: Users },
       ]}
       active={view}
-      onNavigate={(id) => setView(id as AdminView)}
+      onNavigate={(id) => {
+        setDeliveryClientId(null);
+        setView(id as AdminView);
+      }}
     >
-      {view === "overview" ? (
+      {deliveryClientId ? (
+        <ClientDelivery
+          clientId={deliveryClientId}
+          onBack={() => {
+            setDeliveryClientId(null);
+            setView("clients");
+          }}
+          onPreview={() => startPreview(deliveryClientId)}
+        />
+      ) : view === "overview" ? (
         <div className="page-enter">
           <header className="mb-7 flex flex-wrap items-end justify-between gap-4">
             <div>
@@ -102,7 +116,7 @@ export function AdminWorkspace() {
                     post={post}
                     today={today}
                     subtitle={clientsById.get(post.client_id)?.business_name ?? "Cliente"}
-                    onOpen={() => startPreview(post.client_id)}
+                    onOpen={() => setDeliveryClientId(post.client_id)}
                   />
                 ))}
               </div>
@@ -128,7 +142,7 @@ export function AdminWorkspace() {
                       key={client.id}
                       client={client}
                       pkg={packages.find((item) => item.client_id === client.id)}
-                      onPreview={() => startPreview(client.id)}
+                      onPreview={() => setDeliveryClientId(client.id)}
                     />
                   ))}
               </div>
@@ -143,7 +157,7 @@ export function AdminWorkspace() {
               Clientes
             </h1>
             <p className="mt-2 text-sm text-muted-foreground">
-              Acesse o portal de cada cliente e acompanhe o pacote atual.
+              Abra uma cliente para enviar artes, ajustar datas e liberar publicações.
             </p>
           </header>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -153,7 +167,7 @@ export function AdminWorkspace() {
                 client={client}
                 pkg={packages.find((item) => item.client_id === client.id)}
                 expanded
-                onPreview={() => startPreview(client.id)}
+                onPreview={() => setDeliveryClientId(client.id)}
               />
             ))}
           </div>

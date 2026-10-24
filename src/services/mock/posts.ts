@@ -136,3 +136,35 @@ export async function listUpcomingDeliveries(days = 7): Promise<PostWithMedia[]>
       .map(withMedia),
   );
 }
+
+export interface NewPostInput {
+  clientId: string;
+  packageId: string;
+  scheduledDate: string;
+  scheduledTime: string;
+  title: string;
+}
+
+/** Admin: adds a draft outside the plan's original slots. */
+export async function createPost(input: NewPostInput): Promise<PostWithMedia> {
+  await delay();
+  const db = getDB();
+  const pkg = db.packages.find((p) => p.id === input.packageId && p.client_id === input.clientId);
+  if (!pkg) throw new Error("Pacote não encontrado");
+  const post: Post = {
+    id: uid("p"),
+    client_id: input.clientId,
+    client_package_id: input.packageId,
+    format: "single",
+    title: input.title,
+    caption: null,
+    scheduled_date: input.scheduledDate,
+    scheduled_time: input.scheduledTime,
+    status: "draft",
+    published_at: null,
+    published_by: null,
+  };
+  db.posts.push(post);
+  commit();
+  return clone(withMedia(post));
+}

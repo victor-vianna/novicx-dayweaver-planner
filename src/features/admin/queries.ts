@@ -1,5 +1,6 @@
 // Admin data hooks. Admin views include drafts and internal notes.
-import { queryOptions } from "@tanstack/react-query";
+import { queryOptions, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 import { getClient, listClients } from "@/services/clients";
 import { listNotes } from "@/services/notes";
@@ -48,3 +49,24 @@ export const adminUpcomingQuery = () =>
 
 export const adminEndingQuery = () =>
   queryOptions({ queryKey: ["admin", "ending"], queryFn: () => listEndingPackages(15) });
+
+// Delivery mutations (C6). Every success refreshes admin views and the
+// client's portal cache, so a preview right after shows the new state.
+export function useDeliveryMutation<TVars, TData>(
+  clientId: string,
+  mutationFn: (vars: TVars) => Promise<TData>,
+  successMessage?: string,
+) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn,
+    onSuccess: async () => {
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["admin"] }),
+        qc.invalidateQueries({ queryKey: ["portal", clientId] }),
+      ]);
+      if (successMessage) toast.success(successMessage);
+    },
+    onError: (error) => toast.error(error.message || "Não foi possível salvar."),
+  });
+}

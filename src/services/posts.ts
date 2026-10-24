@@ -4,7 +4,7 @@ import { isMockMode } from "@/lib/data-source";
 import * as mock from "./mock/posts";
 import * as remote from "./supabase/posts";
 
-export type { PostPatch } from "./mock/posts";
+export type { NewPostInput, PostPatch } from "./mock/posts";
 
 const impl = (): typeof mock => (isMockMode() ? mock : remote);
 
@@ -18,3 +18,4 @@ export const unmarkPostPublished: typeof mock.unmarkPostPublished = (...args) =>
 export const setPostMedia: typeof mock.setPostMedia = (...args) => impl().setPostMedia(...args);
 export const listUpcomingDeliveries: typeof mock.listUpcomingDeliveries = (...args) =>
   impl().listUpcomingDeliveries(...args);
+export const createPost: typeof mock.createPost = (...args) => impl().createPost(...args);

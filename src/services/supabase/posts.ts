@@ -1,5 +1,5 @@
 import { addDays, todayISO } from "@/lib/dates";
-import type { PostPatch } from "@/services/mock/posts";
+import type { NewPostInput, PostPatch } from "@/services/mock/posts";
 import type { Actor, Post, PostWithMedia } from "@/types/domain";
 
 import { db, fail, POST_WITH_MEDIA, toPostsWithMedia } from "./shared";
@@ -99,4 +99,21 @@ export async function listUpcomingDeliveries(days = 7): Promise<PostWithMedia[]>
     .order("scheduled_time");
   if (error) fail(error, "Não foi possível carregar as próximas entregas.");
   return toPostsWithMedia(data ?? []);
+}
+
+export async function createPost(input: NewPostInput): Promise<PostWithMedia> {
+  const { data, error } = await db()
+    .from("posts")
+    .insert({
+      client_id: input.clientId,
+      client_package_id: input.packageId,
+      title: input.title,
+      scheduled_date: input.scheduledDate,
+      scheduled_time: input.scheduledTime,
+      status: "draft",
+    })
+    .select("id")
+    .single();
+  if (error) fail(error, "Não foi possível criar a publicação.");
+  return requirePost(data.id as string);
 }
