@@ -1,28 +1,59 @@
-// MVP flow against the LOCAL Supabase stack, through the real services:
-// admin creates a post and uploads art → draft stays invisible to the client →
-// admin releases it → the client sees art + caption via signed URL and marks it
-// published → another client and anon see nothing. Refuses non-local URLs.
-// Run: npm run db:reset && npm run test:supabase
+// MVP flow through the real services: admin creates a post and uploads art →
+// draft stays invisible to the client → admin releases it → the client sees
+// art + caption via signed URL and marks it published → another client and
+// anon see nothing. Cleans up only the post and files it created.
+// Local stack: npm run db:reset && npm run test:supabase
+// Remote dev project: npm run e2e:setup:remote && npm run test:supabase:remote
 import { execSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
-const env = Object.fromEntries(
-  execSync("npx supabase status -o env", { encoding: "utf8" })
-    .split(/\r?\n/)
-    .map((line) => line.match(/^([A-Z_]+)="?(.*?)"?$/))
-    .filter((m): m is RegExpMatchArray => m !== null)
-    .map((m) => [m[1], m[2]]),
-);
-const url = env["API_URL"];
-if (!url || !/^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/.test(url)) {
-  throw new Error(`Refusing to run: ${url ?? "no API_URL"} is not the local stack.`);
+const REMOTE = process.env["E2E_TARGET"] === "remote";
+const REMOTE_URL = "https://smhrcfiwpqhumdclzdre.supabase.co";
+
+const parseEnv = (text: string) =>
+  Object.fromEntries(
+    text
+      .split(/\r?\n/)
+      .map((line) => line.match(/^([A-Z0-9_]+)="?(.*?)"?$/))
+      .filter((m): m is RegExpMatchArray => m !== null)
+      .map((m) => [m[1], m[2]]),
+  );
+
+let url: string | undefined;
+let key: string;
+let PASSWORD: string;
+let ADMIN: string;
+let MARINA: string;
+let RAFAEL: string;
+if (REMOTE) {
+  const env = parseEnv(readFileSync(".env.e2e.local", "utf8"));
+  url = env["E2E_SUPABASE_URL"];
+  if (url !== REMOTE_URL)
+    throw new Error(`Refusing to run: ${url ?? "no URL"} is not ${REMOTE_URL}.`);
+  key = env["E2E_SUPABASE_PUBLISHABLE_KEY"] ?? "";
+  if (!key.startsWith("sb_publishable_")) throw new Error("E2E key must be the publishable key.");
+  PASSWORD = env["E2E_PASSWORD"] ?? "";
+  [ADMIN, MARINA, RAFAEL] = ["e2e-admin@example.com", "e2e-a@example.com", "e2e-b@example.com"];
+} else {
+  const env = parseEnv(execSync("npx supabase status -o env", { encoding: "utf8" }));
+  url = env["API_URL"];
+  if (!url || !/^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/.test(url)) {
+    throw new Error(`Refusing to run: ${url ?? "no API_URL"} is not the local stack.`);
+  }
+  key = env["PUBLISHABLE_KEY"] ?? env["ANON_KEY"] ?? "";
+  PASSWORD = "demo1234";
+  [ADMIN, MARINA, RAFAEL] = [
+    "equipe@novicx.com.br",
+    "marina@exemplo.com.br",
+    "rafael@rmtreinamento.com.br",
+  ];
 }
 
 vi.stubEnv("VITE_DATA_SOURCE", "supabase");
 vi.stubEnv("VITE_SUPABASE_URL", url);
-vi.stubEnv("VITE_SUPABASE_PUBLISHABLE_KEY", env["PUBLISHABLE_KEY"] ?? env["ANON_KEY"] ?? "");
+vi.stubEnv("VITE_SUPABASE_PUBLISHABLE_KEY", key);
 
 const auth = await import("./auth");
 const clients = await import("./clients");
@@ -30,11 +61,6 @@ const packages = await import("./packages");
 const posts = await import("./posts");
 const media = await import("./media");
 const { db, MEDIA_BUCKET } = await import("./shared");
-
-const PASSWORD = "demo1234";
-const ADMIN = "equipe@novicx.com.br";
-const MARINA = "marina@exemplo.com.br";
-const RAFAEL = "rafael@rmtreinamento.com.br";
 
 const jpeg = (name: string) =>
   new File([readFileSync(`src/assets/posts/${name}`)], name, { type: "image/jpeg" });
@@ -48,7 +74,7 @@ let postId = "";
 let marinaId = "";
 let mediaPath = "";
 
-describe("Supabase MVP flow (local stack)", () => {
+describe(`Supabase MVP flow (${REMOTE ? "remote dev" : "local stack"})`, () => {
   beforeAll(async () => {
     const session = await as(ADMIN);
     expect(session.profile.role).toBe("admin");

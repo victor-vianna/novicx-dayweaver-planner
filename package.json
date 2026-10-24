@@ -19,6 +19,8 @@
     "db:test": "supabase test db",
     "db:test:remote": "node scripts/db-test-remote.mjs",
     "test:supabase": "vitest run --config vitest.supabase.config.ts",
+    "test:supabase:remote": "vitest run --config vitest.supabase.config.ts --mode remote",
+    "e2e:setup:remote": "node scripts/e2e-remote-setup.mjs",
     "db:types": "supabase gen types typescript --local > src/integrations/supabase/database.types.ts && prettier --write src/integrations/supabase/database.types.ts",
     "db:types:remote": "supabase gen types typescript --linked > src/integrations/supabase/database.types.ts && prettier --write src/integrations/supabase/database.types.ts",
     "db:seed-media": "node scripts/seed-media.mjs"
