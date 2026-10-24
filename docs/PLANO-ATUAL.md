@@ -4,7 +4,8 @@
 - **Líder técnico / executor do backend:** Claude Code
 - **Revisor independente das mudanças críticas:** Codex
 - **Base:** `codex/ciclo-1` aprovado (`docs/REVISAO-CLAUDE.md`)
-- **Status:** aprovado com condições pelo responsável. **C0 autorizado.** Nada remoto sem confirmação.
+- **Status:** aprovado. Responsável autorizou (2026-10-23) integração com projeto remoto **de desenvolvimento** existente, com migrations não destrutivas testadas localmente; produção, resets e exclusões remotas continuam proibidos.
+- **Andamento (2026-10-23):** C0 ✅ · C1–C3 escritos (SQL + pgTAP), **aguardando execução local** (Docker pausado) · C4/C5 ✅ (tsc/vitest) · C6 ✅ (tsc/vitest) · C7 pendente de M1/M2. Tarefas do Codex: `docs/TAREFAS-CODEX.md`.
 - Planos anteriores: histórico Git deste arquivo.
 
 ## Escopo do MVP
