@@ -5,7 +5,7 @@
 - **Revisor independente das mudanças críticas:** Codex
 - **Base:** `codex/ciclo-1` aprovado (`docs/REVISAO-CLAUDE.md`)
 - **Status:** aprovado. Responsável autorizou (2026-10-23) integração com projeto remoto **de desenvolvimento** existente, com migrations não destrutivas testadas localmente; produção, resets e exclusões remotas continuam proibidos.
-- **Andamento (2026-10-23):** C0 ✅ · C1–C3 escritos (SQL + pgTAP), **aguardando execução local** (Docker pausado) · C4/C5 ✅ (tsc/vitest) · C6 ✅ (tsc/vitest) · C7 pendente de M1/M2. Tarefas do Codex: `docs/TAREFAS-CODEX.md`.
+- **Andamento (2026-10-24):** C0–C6 ✅. Docker abandonado (memória): C7 feito no remoto dev `smhrcfiwpqhumdclzdre` — migrations aplicadas, pgTAP 74/74 via `db:test:remote`, fluxo E2E 7/7 via `test:supabase:remote`, cadastro público desligado. Endurecimentos: revoga EXECUTE de funções de trigger; vínculo conta→cliente só com e-mail confirmado. Pendente: revisão Codex X4 (C1–C7), teste manual das telas no modo supabase, Vercel (X8), A4 (SMTP). Entrega: `docs/ENTREGA-CLAUDE.md`.
 - Planos anteriores: histórico Git deste arquivo.
 
 ## Escopo do MVP

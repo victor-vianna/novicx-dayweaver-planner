@@ -35,34 +35,52 @@ E-mails de recuperação de senha locais aparecem no Mailpit (`http://127.0.0.1:
 1. **Cliente:** inserir em `clients` (Studio → Table editor, ou SQL) com o e-mail
    em minúsculas. Planos: tabela `plans`.
 2. **Acesso:** Studio → Authentication → *Add user* (e-mail igual ao da cliente,
-   senha provisória ou convite). O trigger cria o `profile` `client` e vincula à
-   cliente pelo e-mail.
+   senha provisória com **Auto Confirm User**, ou convite). O trigger cria o
+   `profile` `client` e vincula à cliente pelo e-mail **quando o e-mail está
+   confirmado** (na criação com Auto Confirm, ou quando o convite é aceito).
 3. **Admin:** criar o usuário e promover por SQL:
    `update public.profiles set role = 'admin' where id = '<uuid do usuário>';`
 4. Pacote, datas, artes e liberação: pela tela da equipe (Clientes → cliente).
 
 Cadastro público fica desligado (`enable_signup = false`).
 
-## Projeto remoto de desenvolvimento
+## Projeto remoto de desenvolvimento (sem Docker)
 
-Pré-requisito: projeto existente, identidade confirmada (`supabase projects list`).
+Projeto: `novicx-planner-dev`, ref **`smhrcfiwpqhumdclzdre`** (`us-east-1`).
+Conferir sempre `supabase/.temp/project-ref` antes de operar; os scripts abaixo
+recusam rodar em outro ref.
 
 ```bash
-npx supabase login
-npx supabase link --project-ref <ref>
+npx supabase migration list --linked
 npx supabase db push --dry-run   # revisar: só migrations novas, nada destrutivo
 npx supabase db push
+npm run db:test:remote           # pgTAP no remoto; cada arquivo aborta no fim → nada é gravado
+npm run db:types:remote          # tipos a partir do remoto
+npm run e2e:setup:remote         # contas [E2E] fictícias (idempotente)
+npm run test:supabase:remote     # fluxo admin → upload → cliente pelos services
 ```
 
-Nunca rodar `db reset` remoto nem `seed.sql` no remoto. Depois do push:
+Nunca rodar `db reset` remoto nem `seed.sql` no remoto.
 
-- Authentication → URL Configuration: *Site URL* = URL da Vercel e *Redirect URLs*
-  inclui `https://<app>.vercel.app/**` (recuperação de senha).
-- Authentication → Sign In / Providers: provedor **Email ligado**, *Allow new
-  users to sign up* **desligado** (equivale ao `config.toml`: `[auth.email]
-  enable_signup = true` liga o provedor; `[auth] enable_signup = false` bloqueia
-  o cadastro público). Desligar o provedor bloqueia o login.
-- Conferir que o bucket `post-media` foi criado privado (a migration cria).
+`.env.e2e.local` (ignorado pelo Git): `E2E_SUPABASE_URL`,
+`E2E_SUPABASE_PUBLISHABLE_KEY` (chave publicável) e `E2E_PASSWORD` (gerada pelo
+setup). Contas: `e2e-admin@example.com` (admin), `e2e-a@example.com`,
+`e2e-b@example.com`; ids `ee2e0000-…`; plano inativo `[E2E] Plano de teste`. O
+teste remove só o post e os arquivos que ele cria.
+
+Auth remoto (aplicado em 2026-10-24 por `config push` a partir de cópia
+temporária do `config.toml`, só com estes campos): cadastro público
+**desligado**, senha mínima 8, *Site URL* `http://localhost:8080`, redirects
+`http://localhost:8080/**` e `http://127.0.0.1:8080/**`. Confirmação de e-mail
+e MFA TOTP seguem os padrões do projeto (ligados). **Não** rodar `config push`
+direto do `config.toml` do repo: ele leva os valores do dev local.
+
+Ao publicar na Vercel: *Site URL* = URL da Vercel e *Redirect URLs* incluindo
+`https://<app>.vercel.app/**` (Authentication → URL Configuration).
+
+App local apontando para o remoto (`.env`): `VITE_DATA_SOURCE=supabase`,
+`VITE_SUPABASE_URL=https://smhrcfiwpqhumdclzdre.supabase.co` e a chave
+publicável (`sb_publishable_…`, Settings → API Keys).
 
 **SMTP:** o SMTP padrão do Supabase só entrega para membros da equipe do
 projeto e tem limite baixo. Para clientes reais, configurar SMTP próprio
