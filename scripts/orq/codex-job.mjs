@@ -107,6 +107,16 @@ const deps = {
     writeFileSync(file, data);
   },
   remove: (file) => rmSync(file, { force: true }),
+  mkdirExclusive: (dir) => {
+    try {
+      mkdirSync(dir);
+      return true;
+    } catch (err) {
+      if (err.code === "EEXIST") return false;
+      throw err;
+    }
+  },
+  rmdir: (dir) => rmSync(dir, { recursive: false, force: true }),
   createExclusive: (file, data) => {
     mkdirSync(path.dirname(file), { recursive: true });
     try {

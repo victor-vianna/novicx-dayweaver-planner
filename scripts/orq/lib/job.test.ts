@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -240,6 +240,14 @@ function harness(opts: {
       files[f] = d;
       return true;
     },
+    mkdirExclusive: (d) => {
+      if (`dir:${d}` in files) return false;
+      files[`dir:${d}`] = "";
+      return true;
+    },
+    rmdir: (d) => {
+      delete files[`dir:${d}`];
+    },
     git: async (_cwd, a) => {
       gitCalls.push(a);
       if (a[0] === "status") return opts.dirty ? " M x" : "";
@@ -431,6 +439,15 @@ describe("acquireLock / releaseLock on the real filesystem", () => {
       }
     },
     remove: (f: string) => rmSync(f, { force: true }),
+    mkdirExclusive: (d: string) => {
+      try {
+        mkdirSync(d);
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    rmdir: (d: string) => rmSync(d, { recursive: true, force: true }),
   };
 
   it("lets exactly one of several concurrent processes acquire the lock", async () => {
@@ -471,4 +488,66 @@ describe("acquireLock / releaseLock on the real filesystem", () => {
     expect(realFs.read(lock)).toBeNull();
     rmSync(dir, { recursive: true, force: true });
   });
+});
+
+describe("stale lock takeover race (O0-B1-R2)", () => {
+  // In-memory fs whose hooks let one acquirer run entirely in the middle of another.
+  function memFs(hooks: { onRead?: () => void } = {}) {
+    const files = new Map<string, string>();
+    const dirs = new Set<string>();
+    let reads = 0;
+    const fs = {
+      files,
+      dirs,
+      createExclusive: (f: string, d: string) => (files.has(f) ? false : (files.set(f, d), true)),
+      read: (f: string) => {
+        const v = files.get(f) ?? null; // value seen BEFORE the hook runs
+        if (reads++ === 0) hooks.onRead?.();
+        return v;
+      },
+      remove: (f: string) => void files.delete(f),
+      mkdirExclusive: (d: string) => (dirs.has(d) ? false : (dirs.add(d), true)),
+      rmdir: (d: string) => void dirs.delete(d),
+    };
+    return fs;
+  }
+
+  it("a slow second taker of the same dead lock never deletes the winner's lock", () => {
+    let first: string | null = null;
+    const fs = memFs({ onRead: () => (first = acquireLock(fs, "/l", 1001, () => false)) });
+    fs.files.set("/l", "999");
+    const second = acquireLock(fs, "/l", 1002, () => false);
+    expect(first).toBe("acquired");
+    expect(second).toBe("busy");
+    expect(fs.files.get("/l")).toBe("1001");
+  });
+
+  it("only one of several processes recovers a dead lock", async () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "orq-lock-"));
+    const lock = path.join(dir, "codex.lock");
+    writeFileSync(lock, "999999");
+    const mod = pathToFileURL(path.resolve("scripts/orq/lib/job.ts")).href;
+    const code = [
+      `import { mkdirSync, readFileSync, rmSync, rmdirSync, writeFileSync } from "node:fs";`,
+      `import { acquireLock } from ${JSON.stringify(mod)};`,
+      `const tryIt = (fn) => { try { fn(); return true; } catch { return false; } };`,
+      `const fs = {`,
+      `  createExclusive: (f, d) => tryIt(() => writeFileSync(f, d, { flag: "wx" })),`,
+      `  read: (f) => { try { return readFileSync(f, "utf8"); } catch { return null; } },`,
+      `  remove: (f) => rmSync(f, { force: true }),`,
+      `  mkdirExclusive: (d) => tryIt(() => mkdirSync(d)),`,
+      `  rmdir: (d) => tryIt(() => rmdirSync(d)),`,
+      `};`,
+      `console.log(acquireLock(fs, ${JSON.stringify(lock)}, process.pid, (p) => p !== 999999));`,
+    ].join("\n");
+    const run = () =>
+      new Promise<string>((resolve, reject) =>
+        execFile(process.execPath, ["--input-type=module", "-e", code], (err, out) =>
+          err ? reject(err) : resolve(out.trim()),
+        ),
+      );
+    const results = await Promise.all([run(), run(), run(), run(), run(), run()]);
+    expect(results.filter((r) => r === "acquired")).toHaveLength(1);
+    rmSync(dir, { recursive: true, force: true });
+  }, 30_000);
 });

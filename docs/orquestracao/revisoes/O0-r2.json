@@ -1,0 +1,99 @@
+{
+  "task_id": "O0",
+  "round": 2,
+  "commit": "d82d07f",
+  "verdict": "changes_requested",
+  "acceptance": [
+    {
+      "criterion": "1. Recusa iniciar se o lock tem PID vivo; remove lock de PID morto; sempre libera o próprio lock.",
+      "status": "failed",
+      "evidence": "O lock inicial agora usa criação exclusiva e release por PID, mas scripts/orq/lib/job.ts:92-94 ainda remove incondicionalmente um lock considerado obsoleto. Dois processos que já leram o mesmo lock morto podem removê-lo em sequência e ambos retornar acquired. Os testes concorrentes cobrem somente lock inicialmente inexistente; stale concorrente é testado apenas sequencialmente."
+    },
+    {
+      "criterion": "2. Recusa rodada > 3, --resume na rodada 1 e memória livre < 1,5 GB.",
+      "status": "verified",
+      "evidence": "Implementação anterior permanece; vitest-r2.log registra 60/60 testes, incluindo argumentos e memória."
+    },
+    {
+      "criterion": "3. Máximo de duas tentativas persistentes; timeout de 45 minutos conta como tentativa.",
+      "status": "verified",
+      "evidence": "Implementação anterior permanece sem alteração funcional; vitest-r2.log registra 60/60 testes, incluindo timeout, limite e tentativas entre execuções."
+    },
+    {
+      "criterion": "4. Codex usa execFile sem shell; review limpo com HEAD conferido; task exige codex/ciclo-3.",
+      "status": "verified",
+      "evidence": "A implementação anterior permanece e a rodada adiciona base imutável: parseArgs exige --base SHA; runJob resolve o commit, rejeita base igual ao SHA e valida ancestralidade em scripts/orq/lib/job.ts:294-312. O JOB recebido contém o SHA completo 0113c6c26dd1b9b71335011ca983bc0d68e137f9."
+    },
+    {
+      "criterion": "5. Resultado validado pelo schema e por task_id, round e commit; inválido não é copiado.",
+      "status": "verified",
+      "evidence": "Validação anterior permanece; vitest-r2.log registra 60/60 testes e npx tsc --noEmit passou."
+    },
+    {
+      "criterion": "6. JSON válido é copiado para o destino correto e thread_id é salvo para resume.",
+      "status": "verified",
+      "evidence": "Fluxo anterior permanece coberto pela suíte; vitest-r2.log registra 60/60 testes."
+    },
+    {
+      "criterion": "7. isApproved aplica a regra do coordenador sem confiar no verdict.",
+      "status": "verified",
+      "evidence": "Implementação e testes anteriores permanecem; vitest-r2.log registra 60/60 testes."
+    },
+    {
+      "criterion": "8. Nenhum segredo nos arquivos; .orq ignorado pelo Git.",
+      "status": "verified",
+      "evidence": "O delta contém apenas documentação e lógica/testes da orquestração, sem credenciais; .orq continua ignorado."
+    }
+  ],
+  "checks": [
+    {
+      "command": "git rev-parse HEAD",
+      "result": "pass",
+      "summary": "HEAD = d82d07fa8a0bdf739b705046fa7c1220a89c4287, correspondente ao SHA solicitado."
+    },
+    {
+      "command": "npx tsc --noEmit",
+      "result": "pass",
+      "summary": "Concluiu com código 0 e sem diagnósticos."
+    },
+    {
+      "command": "npm run lint",
+      "result": "pass",
+      "summary": "Concluiu com código 0: 0 erros e 8 avisos react-refresh preexistentes fora do escopo."
+    },
+    {
+      "command": "npx vitest run --maxWorkers=2 scripts/orq",
+      "result": "fail",
+      "summary": "O sandbox bloqueou o carregamento da configuração com spawn EPERM, antes de executar testes. A evidência vitest-r2.log do coordenador registra 4 arquivos e 60/60 testes aprovados."
+    },
+    {
+      "command": "git diff --check 0113c6c26dd1b9b71335011ca983bc0d68e137f9..d82d07f",
+      "result": "pass",
+      "summary": "Nenhum erro de whitespace no delta imutável da rodada."
+    },
+    {
+      "command": "npm run build",
+      "result": "not_run",
+      "summary": "Não aplicável: o delta não altera build ou rotas."
+    },
+    {
+      "command": "git status --short",
+      "result": "pass",
+      "summary": "Worktree limpo após remover somente o cache não versionado criado pela consulta Trail."
+    }
+  ],
+  "findings": [
+    {
+      "id": "O0-B1-R2",
+      "severity": "bloqueante",
+      "file": "scripts/orq/lib/job.ts",
+      "line": 92,
+      "title": "Takeover concorrente de lock obsoleto ainda permite dois vencedores",
+      "detail": "O0-B1 foi corrigido para o caso de lock inicialmente ausente, mas não para dois processos recuperando o mesmo lock morto. Ambos podem falhar no primeiro createExclusive e ler o PID morto; o primeiro remove e cria seu lock, depois o segundo executa fs.remove(file), apaga o lock recém-criado e também cria o próprio. Assim, ambos retornam acquired. O teste de quatro processos começa sem lock, e o teste de stale é sequencial, portanto essa intercalação não é detectada.",
+      "expected_fix": "Tornar também a tomada do lock obsoleto exclusiva. Uma opção é mover atomicamente o arquivo stale para um nome de claim único e permitir que somente o processo cujo rename venceu tente criar o lock original; os demais retornam busy ou repetem a aquisição sem remover arquivos novos. Adicionar teste multiprocesso iniciado com um PID morto e sincronizar os workers após a leitura do stale.",
+      "repro_test": "it('permite só um vencedor ao recuperar stale concorrentemente', async () => { writeFileSync(lock, '999999'); const results = await runWorkersWithBarrier([{ removeDelay: 0 }, { removeDelay: 200 }], { isAlive: () => false }); expect(results.filter(r => r === 'acquired')).toHaveLength(1); });",
+      "previous_id": "O0-B1"
+    }
+  ],
+  "summary": "O0-I1 foi resolvido: review agora exige base em SHA, resolve o commit completo, rejeita diff vazio e valida ancestralidade. O0-B1 foi parcialmente corrigido, mas permanece bloqueante no caminho concorrente de recuperação de lock obsoleto; os novos testes não exercitam essa intercalação. Tipos e lint passaram; Vitest continuou impedido pelo spawn EPERM local, com evidência externa de 60/60 testes. Trail economizou aproximadamente 11.688 tokens nesta rodada."
+}

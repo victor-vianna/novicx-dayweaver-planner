@@ -75,6 +75,9 @@ export interface LockFs {
   createExclusive(file: string, data: string): boolean;
   read(file: string): string | null;
   remove(file: string): void;
+  /** mkdir that fails if the directory exists (atomic); false if it exists. */
+  mkdirExclusive(dir: string): boolean;
+  rmdir(dir: string): void;
 }
 
 /**
@@ -89,9 +92,24 @@ export function acquireLock(
   isAlive: (pid: number) => boolean,
 ): "acquired" | "busy" {
   if (fs.createExclusive(file, String(pid))) return "acquired";
-  if (checkLock(fs.read(file), isAlive) === "busy") return "busy";
-  fs.remove(file);
-  return fs.createExclusive(file, String(pid)) ? "acquired" : "busy";
+  const seen = fs.read(file);
+  if (seen === null) return fs.createExclusive(file, String(pid)) ? "acquired" : "busy";
+  if (checkLock(seen, isAlive) === "busy") return "busy";
+
+  // Taking over a dead lock is itself exclusive, per dead content: only the
+  // process that creates `<lock>.takeover-<content>` may remove the lock, and
+  // only while it still holds that same content. The marker is removed after
+  // the lock no longer holds that content, so a late taker that recreates it
+  // finds other content and backs off without deleting anything.
+  const marker = `${file}.takeover-${seen.trim().replace(/[^0-9A-Za-z]/g, "_") || "empty"}`;
+  if (!fs.mkdirExclusive(marker)) return "busy";
+  try {
+    if (fs.read(file) !== seen) return fs.createExclusive(file, String(pid)) ? "acquired" : "busy";
+    fs.remove(file);
+    return fs.createExclusive(file, String(pid)) ? "acquired" : "busy";
+  } finally {
+    fs.rmdir(marker);
+  }
 }
 
 /** Removes the lock only while it still holds our PID. */
