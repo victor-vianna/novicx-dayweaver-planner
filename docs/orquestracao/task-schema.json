@@ -1,0 +1,40 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "task_id",
+    "round",
+    "status",
+    "branch",
+    "commits",
+    "files_changed",
+    "checks",
+    "out_of_scope_requests",
+    "limitations",
+    "summary"
+  ],
+  "properties": {
+    "task_id": { "type": "string" },
+    "round": { "type": "integer" },
+    "status": { "type": "string", "enum": ["delivered", "blocked"] },
+    "branch": { "type": "string" },
+    "commits": { "type": "array", "items": { "type": "string" } },
+    "files_changed": { "type": "array", "items": { "type": "string" } },
+    "checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["command", "result", "summary"],
+        "properties": {
+          "command": { "type": "string" },
+          "result": { "type": "string", "enum": ["pass", "fail", "not_run"] },
+          "summary": { "type": "string" }
+        }
+      }
+    },
+    "out_of_scope_requests": { "type": "array", "items": { "type": "string" } },
+    "limitations": { "type": "array", "items": { "type": "string" } },
+    "summary": { "type": "string" }
+  }
+}

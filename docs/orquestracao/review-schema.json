@@ -1,0 +1,76 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "task_id",
+    "round",
+    "commit",
+    "verdict",
+    "acceptance",
+    "checks",
+    "findings",
+    "summary"
+  ],
+  "properties": {
+    "task_id": { "type": "string" },
+    "round": { "type": "integer" },
+    "commit": { "type": "string" },
+    "verdict": { "type": "string", "enum": ["approved", "changes_requested", "blocked"] },
+    "acceptance": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["criterion", "status", "evidence"],
+        "properties": {
+          "criterion": { "type": "string" },
+          "status": { "type": "string", "enum": ["verified", "failed", "not_verifiable"] },
+          "evidence": { "type": "string" }
+        }
+      }
+    },
+    "checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["command", "result", "summary"],
+        "properties": {
+          "command": { "type": "string" },
+          "result": { "type": "string", "enum": ["pass", "fail", "not_run"] },
+          "summary": { "type": "string" }
+        }
+      }
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "severity",
+          "file",
+          "line",
+          "title",
+          "detail",
+          "expected_fix",
+          "repro_test",
+          "previous_id"
+        ],
+        "properties": {
+          "id": { "type": "string" },
+          "severity": { "type": "string", "enum": ["bloqueante", "importante", "melhoria"] },
+          "file": { "type": "string" },
+          "line": { "type": "integer" },
+          "title": { "type": "string" },
+          "detail": { "type": "string" },
+          "expected_fix": { "type": "string" },
+          "repro_test": { "type": "string" },
+          "previous_id": { "type": "string" }
+        }
+      }
+    },
+    "summary": { "type": "string" }
+  }
+}

@@ -38,3 +38,6 @@ dist-ssr
 .env
 .env.*
 !.env.example
+
+# Orquestração Claude + Codex: runs, evidências e locks (nunca versionar)
+.orq/
