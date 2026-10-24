@@ -1,17 +1,17 @@
 -- C2 — isolamento entre clientes, rascunhos, notas, planos, RPCs e anon.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(40);
+select plan(42);
 
 -- Fixtures (como postgres) -------------------------------------------------
 -- A = cliente com conta; B = outra cliente com conta; ADM = equipe.
 insert into public.clients (id, display_name, business_name, email) values
   ('aaaaaaaa-0000-4000-8000-00000000000c', 'A', 'Cliente A', 'a@teste.dev'),
   ('bbbbbbbb-0000-4000-8000-00000000000c', 'B', 'Cliente B', 'b@teste.dev');
-insert into auth.users (id, email) values
-  ('aaaaaaaa-0000-4000-8000-000000000001', 'a@teste.dev'),
-  ('bbbbbbbb-0000-4000-8000-000000000001', 'b@teste.dev'),
-  ('dddddddd-0000-4000-8000-000000000001', 'adm@teste.dev');
+insert into auth.users (id, email, email_confirmed_at) values
+  ('aaaaaaaa-0000-4000-8000-000000000001', 'a@teste.dev', now()),
+  ('bbbbbbbb-0000-4000-8000-000000000001', 'b@teste.dev', now()),
+  ('dddddddd-0000-4000-8000-000000000001', 'adm@teste.dev', now());
 update public.profiles set role = 'admin' where id = 'dddddddd-0000-4000-8000-000000000001';
 
 insert into public.plans (id, name, posts_per_period, period_days, default_weekdays, default_times)
@@ -113,7 +113,7 @@ select throws_ok($$select public.set_post_published('aaaaaaaa-0000-4000-8000-000
 
 -- Usuário sem cliente vinculada ---------------------------------------------
 reset role;
-insert into auth.users (id, email) values ('cccccccc-0000-4000-8000-000000000001', 'solto@teste.dev');
+insert into auth.users (id, email, email_confirmed_at) values ('cccccccc-0000-4000-8000-000000000001', 'solto@teste.dev', now());
 reset role;
 select pg_temp.login('cccccccc-0000-4000-8000-000000000001');
 select is_empty($$select 1 from public.posts$$, 'usuário sem vínculo não lê posts');
@@ -153,6 +153,11 @@ select throws_ok($$select 1 from public.posts$$, '42501', null, 'anon não lê p
 select throws_ok($$select public.set_post_published('aaaaaaaa-0000-4000-8000-0000000000f1', true)$$,
   '42501', null, 'anon não executa RPC');
 reset role;
+
+select ok(not has_function_privilege('authenticated', 'public.handle_new_user()', 'execute'),
+  'authenticated não executa função de trigger handle_new_user');
+select ok(not has_function_privilege('authenticated', 'public.set_updated_at()', 'execute'),
+  'authenticated não executa função de trigger set_updated_at');
 
 select * from finish();
 rollback;

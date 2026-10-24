@@ -14,10 +14,10 @@ select is((select allowed_mime_types from storage.buckets where id = 'post-media
 insert into public.clients (id, display_name, business_name, email) values
   ('aaaaaaaa-0000-4000-8000-00000000000c', 'A', 'Cliente A', 'a@teste.dev'),
   ('bbbbbbbb-0000-4000-8000-00000000000c', 'B', 'Cliente B', 'b@teste.dev');
-insert into auth.users (id, email) values
-  ('aaaaaaaa-0000-4000-8000-000000000001', 'a@teste.dev'),
-  ('bbbbbbbb-0000-4000-8000-000000000001', 'b@teste.dev'),
-  ('dddddddd-0000-4000-8000-000000000001', 'adm@teste.dev');
+insert into auth.users (id, email, email_confirmed_at) values
+  ('aaaaaaaa-0000-4000-8000-000000000001', 'a@teste.dev', now()),
+  ('bbbbbbbb-0000-4000-8000-000000000001', 'b@teste.dev', now()),
+  ('dddddddd-0000-4000-8000-000000000001', 'adm@teste.dev', now());
 update public.profiles set role = 'admin' where id = 'dddddddd-0000-4000-8000-000000000001';
 insert into public.plans (id, name, posts_per_period, period_days)
 values ('eeeeeeee-0000-4000-8000-000000000001', 'P', 2, 30);

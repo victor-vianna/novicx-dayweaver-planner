@@ -1,7 +1,7 @@
 -- C1 — estrutura, restrições e trigger de novo usuário.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(16);
+select plan(19);
 
 select has_table('public', t, 'tabela ' || t) from unnest(array[
   'profiles', 'clients', 'plans', 'client_packages', 'posts', 'post_media', 'internal_notes'
@@ -16,8 +16,8 @@ select ok(
 -- Trigger: usuário criado com e-mail de cliente → profile client + vínculo.
 insert into public.clients (id, display_name, business_name, email)
 values ('11111111-0000-4000-8000-000000000001', 'Ana', 'Ana Estúdio', 'ana@teste.dev');
-insert into auth.users (id, email, raw_user_meta_data)
-values ('22222222-0000-4000-8000-000000000001', 'Ana@Teste.dev', '{"full_name":"Ana"}');
+insert into auth.users (id, email, raw_user_meta_data, email_confirmed_at)
+values ('22222222-0000-4000-8000-000000000001', 'Ana@Teste.dev', '{"full_name":"Ana"}', now());
 
 select is((select role::text from public.profiles where id = '22222222-0000-4000-8000-000000000001'),
   'client', 'trigger cria profile com role client');
@@ -27,6 +27,18 @@ select is((select user_id from public.clients where id = '11111111-0000-4000-800
 insert into auth.users (id, email) values ('22222222-0000-4000-8000-000000000002', 'sem-cadastro@teste.dev');
 select is((select count(*)::int from public.clients where user_id = '22222222-0000-4000-8000-000000000002'),
   0, 'usuário sem cliente correspondente não vincula nada');
+
+-- E-mail não confirmado não vincula; vincula ao confirmar.
+insert into public.clients (id, display_name, business_name, email)
+values ('11111111-0000-4000-8000-000000000003', 'Caio', 'Caio Ltda', 'caio@teste.dev');
+insert into auth.users (id, email) values ('22222222-0000-4000-8000-000000000003', 'caio@teste.dev');
+select is((select user_id from public.clients where id = '11111111-0000-4000-8000-000000000003'),
+  null, 'e-mail não confirmado não vincula cliente');
+update auth.users set email_confirmed_at = now() where id = '22222222-0000-4000-8000-000000000003';
+select is((select user_id from public.clients where id = '11111111-0000-4000-8000-000000000003'),
+  '22222222-0000-4000-8000-000000000003'::uuid, 'confirmar o e-mail vincula cliente');
+select ok(not has_function_privilege('authenticated', 'public.handle_user_email_confirmed()', 'execute'),
+  'authenticated não executa handle_user_email_confirmed');
 
 -- Restrições
 insert into public.plans (id, name, posts_per_period, period_days)

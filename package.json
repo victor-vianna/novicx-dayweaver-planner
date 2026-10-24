@@ -17,7 +17,10 @@
     "db:status": "supabase status",
     "db:reset": "supabase db reset",
     "db:test": "supabase test db",
-    "db:types": "supabase gen types typescript --local > src/integrations/supabase/database.types.ts",
+    "db:test:remote": "node scripts/db-test-remote.mjs",
+    "test:supabase": "vitest run --config vitest.supabase.config.ts",
+    "db:types": "supabase gen types typescript --local > src/integrations/supabase/database.types.ts && prettier --write src/integrations/supabase/database.types.ts",
+    "db:types:remote": "supabase gen types typescript --linked > src/integrations/supabase/database.types.ts && prettier --write src/integrations/supabase/database.types.ts",
     "db:seed-media": "node scripts/seed-media.mjs"
   },
   "overrides": {
