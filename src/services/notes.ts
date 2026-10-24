@@ -1,37 +1,11 @@
-// Internal notes are agency-only. The client portal must never call these.
-import { clone, commit, delay, getDB, uid } from "@/mocks/store";
-import type { InternalNote } from "@/types/domain";
+// Facade: the UI imports from here; VITE_DATA_SOURCE picks the implementation.
+import { isMockMode } from "@/lib/data-source";
 
-export async function listNotes(clientId: string): Promise<InternalNote[]> {
-  await delay();
-  return clone(
-    getDB()
-      .notes.filter((n) => n.client_id === clientId)
-      .sort((a, b) => b.created_at.localeCompare(a.created_at)),
-  );
-}
+import * as mock from "./mock/notes";
+import * as remote from "./supabase/notes";
 
-export async function addNote(
-  clientId: string,
-  body: string,
-  postId: string | null = null,
-): Promise<InternalNote> {
-  await delay();
-  const note: InternalNote = {
-    id: uid("n"),
-    client_id: clientId,
-    post_id: postId,
-    body,
-    created_at: new Date().toISOString(),
-  };
-  getDB().notes.push(note);
-  commit();
-  return clone(note);
-}
+const impl = (): typeof mock => (isMockMode() ? mock : remote);
 
-export async function deleteNote(id: string): Promise<void> {
-  await delay(160);
-  const db = getDB();
-  db.notes = db.notes.filter((n) => n.id !== id);
-  commit();
-}
+export const listNotes: typeof mock.listNotes = (...args) => impl().listNotes(...args);
+export const addNote: typeof mock.addNote = (...args) => impl().addNote(...args);
+export const deleteNote: typeof mock.deleteNote = (...args) => impl().deleteNote(...args);

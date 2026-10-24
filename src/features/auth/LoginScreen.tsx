@@ -15,14 +15,32 @@ import { Wordmark } from "@/components/brand/Wordmark";
 import { DemoTag } from "@/components/common/States";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/features/auth/useAuth";
+import { isMockMode } from "@/lib/data-source";
 import { DEMO_LOGIN_PREFILL } from "@/services/auth";
 
 export function LoginScreen() {
-  const { signIn, signInAsDemo } = useAuth();
-  const [email, setEmail] = useState<string>(DEMO_LOGIN_PREFILL.email);
-  const [password, setPassword] = useState<string>(DEMO_LOGIN_PREFILL.password);
-  const [busy, setBusy] = useState<"form" | "client" | "admin" | null>(null);
+  const { signIn, signInAsDemo, requestPasswordReset } = useAuth();
+  // Demo shortcuts and prefilled credentials exist only in mock mode.
+  const demo = isMockMode();
+  const [email, setEmail] = useState<string>(demo ? DEMO_LOGIN_PREFILL.email : "");
+  const [password, setPassword] = useState<string>(demo ? DEMO_LOGIN_PREFILL.password : "");
+  const [busy, setBusy] = useState<"form" | "client" | "admin" | "reset" | null>(null);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+
+  const forgotPassword = async () => {
+    setBusy("reset");
+    setError("");
+    setNotice("");
+    try {
+      await requestPasswordReset(email);
+      setNotice("Se o e-mail estiver cadastrado, você receberá um link para criar uma nova senha.");
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Não foi possível enviar o e-mail.");
+    } finally {
+      setBusy(null);
+    }
+  };
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -129,35 +147,68 @@ export function LoginScreen() {
               />
             </label>
             {error && (
-              <p className="rounded-xl bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              <p
+                role="alert"
+                className="rounded-xl bg-destructive/10 px-3 py-2 text-sm text-destructive"
+              >
                 {error}
+              </p>
+            )}
+            {notice && (
+              <p
+                role="status"
+                className="rounded-xl bg-primary-soft px-3 py-2 text-sm text-foreground"
+              >
+                {notice}
               </p>
             )}
             <Button className="w-full" size="lg" disabled={busy !== null}>
               {busy === "form" ? <LoaderCircle className="animate-spin" /> : <ArrowRight />}
               Entrar no Planner
             </Button>
+            {!demo && (
+              <button
+                type="button"
+                onClick={forgotPassword}
+                disabled={busy !== null}
+                className="w-full text-center text-sm font-medium text-primary-glow hover:underline disabled:opacity-60"
+              >
+                {busy === "reset" ? "Enviando…" : "Esqueci minha senha"}
+              </button>
+            )}
           </form>
 
-          <div className="my-6 flex items-center gap-3 text-[11px] font-semibold uppercase tracking-widest text-subtle-foreground">
-            <span className="h-px flex-1 bg-border" /> ou acesse a demo{" "}
-            <span className="h-px flex-1 bg-border" />
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Button
-              variant="secondary"
-              disabled={busy !== null}
-              onClick={() => enterDemo("client")}
-            >
-              {busy === "client" ? <LoaderCircle className="animate-spin" /> : <Eye />}
-              Área cliente
-            </Button>
-            <Button variant="outline" disabled={busy !== null} onClick={() => enterDemo("admin")}>
-              {busy === "admin" ? <LoaderCircle className="animate-spin" /> : <LayoutDashboard />}
-              Área equipe
-            </Button>
-          </div>
-          <DemoTag className="mt-6 w-full justify-center" />
+          {demo && (
+            <>
+              <div className="my-6 flex items-center gap-3 text-[11px] font-semibold uppercase tracking-widest text-subtle-foreground">
+                <span className="h-px flex-1 bg-border" /> ou acesse a demo{" "}
+                <span className="h-px flex-1 bg-border" />
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Button
+                  variant="secondary"
+                  disabled={busy !== null}
+                  onClick={() => enterDemo("client")}
+                >
+                  {busy === "client" ? <LoaderCircle className="animate-spin" /> : <Eye />}
+                  Área cliente
+                </Button>
+                <Button
+                  variant="outline"
+                  disabled={busy !== null}
+                  onClick={() => enterDemo("admin")}
+                >
+                  {busy === "admin" ? (
+                    <LoaderCircle className="animate-spin" />
+                  ) : (
+                    <LayoutDashboard />
+                  )}
+                  Área equipe
+                </Button>
+              </div>
+              <DemoTag className="mt-6 w-full justify-center" />
+            </>
+          )}
         </section>
       </div>
     </main>

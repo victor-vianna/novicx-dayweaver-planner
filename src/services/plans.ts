@@ -1,27 +1,13 @@
-import { clone, commit, delay, getDB, uid } from "@/mocks/store";
-import type { Plan } from "@/types/domain";
+// Facade: the UI imports from here; VITE_DATA_SOURCE picks the implementation.
+import { isMockMode } from "@/lib/data-source";
 
-export type PlanInput = Omit<Plan, "id">;
+import * as mock from "./mock/plans";
+import * as remote from "./supabase/plans";
 
-export async function listPlans(): Promise<Plan[]> {
-  await delay();
-  return clone(getDB().plans);
-}
+export type { PlanInput } from "./mock/plans";
 
-export async function createPlan(input: PlanInput): Promise<Plan> {
-  await delay();
-  const plan: Plan = { id: uid("plan"), ...input };
-  getDB().plans.push(plan);
-  commit();
-  return clone(plan);
-}
+const impl = (): typeof mock => (isMockMode() ? mock : remote);
 
-/** Catalog edits never touch existing packages (they keep their snapshot). */
-export async function updatePlan(id: string, patch: Partial<PlanInput>): Promise<Plan> {
-  await delay();
-  const plan = getDB().plans.find((p) => p.id === id);
-  if (!plan) throw new Error("Plano não encontrado");
-  Object.assign(plan, patch);
-  commit();
-  return clone(plan);
-}
+export const listPlans: typeof mock.listPlans = (...args) => impl().listPlans(...args);
+export const createPlan: typeof mock.createPlan = (...args) => impl().createPlan(...args);
+export const updatePlan: typeof mock.updatePlan = (...args) => impl().updatePlan(...args);

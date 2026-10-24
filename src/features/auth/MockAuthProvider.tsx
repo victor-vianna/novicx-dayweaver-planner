@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react
 import { AuthContext, type AuthStatus } from "@/features/auth/auth-context";
 import {
   getSessionFor,
+  requestPasswordReset,
   signInAsDemo as signInAsDemoService,
   signInWithPassword,
   type MockSession,
@@ -108,6 +109,9 @@ export function MockAuthProvider({ children }: { children: ReactNode }) {
       signOut,
       startPreview,
       stopPreview,
+      requestPasswordReset,
+      passwordRecovery: false,
+      completePasswordReset: async () => {},
     }),
     [status, session, previewClientId, signIn, signInAsDemo, signOut, startPreview, stopPreview],
   );

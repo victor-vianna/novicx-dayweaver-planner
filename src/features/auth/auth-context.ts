@@ -14,6 +14,10 @@ export interface AuthContextValue {
   signOut: () => void;
   startPreview: (clientId: string) => void;
   stopPreview: () => void;
+  requestPasswordReset: (email: string) => Promise<void>;
+  /** True after opening a password-recovery link (Supabase mode only). */
+  passwordRecovery: boolean;
+  completePasswordReset: (password: string) => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null);

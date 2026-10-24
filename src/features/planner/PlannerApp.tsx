@@ -1,5 +1,6 @@
 import { AdminWorkspace } from "@/features/admin/AdminWorkspace";
 import { LoginScreen } from "@/features/auth/LoginScreen";
+import { NewPasswordScreen } from "@/features/auth/NewPasswordScreen";
 import { useAuth } from "@/features/auth/useAuth";
 import { ClientWorkspace } from "@/features/client/ClientWorkspace";
 import { LoadingScreen, MissingClient } from "@/components/common/WorkspaceStates";
@@ -8,6 +9,7 @@ export function PlannerApp() {
   const auth = useAuth();
 
   if (auth.status === "loading") return <LoadingScreen />;
+  if (auth.passwordRecovery) return <NewPasswordScreen />;
   if (auth.status === "signed_out" || !auth.session) return <LoginScreen />;
 
   if (auth.session.profile.role === "admin") {

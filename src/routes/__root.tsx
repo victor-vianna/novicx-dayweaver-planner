@@ -12,6 +12,8 @@ import { useEffect, type ReactNode } from "react";
 
 import { Toaster } from "@/components/ui/sonner";
 import { MockAuthProvider } from "@/features/auth/MockAuthProvider";
+import { SupabaseAuthProvider } from "@/features/auth/SupabaseAuthProvider";
+import { isMockMode } from "@/lib/data-source";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 
@@ -116,15 +118,17 @@ function RootShell({ children }: { children: ReactNode }) {
   );
 }
 
+const AuthProvider = isMockMode() ? MockAuthProvider : SupabaseAuthProvider;
+
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
   return (
     <QueryClientProvider client={queryClient}>
-      <MockAuthProvider>
+      <AuthProvider>
         <Outlet />
         <Toaster position="top-right" richColors />
-      </MockAuthProvider>
+      </AuthProvider>
     </QueryClientProvider>
   );
 }
