@@ -1,6 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 
+import { isMockMode } from "@/lib/data-source";
 import { cn } from "@/lib/utils";
 
 export function Skeleton({ className }: { className?: string }) {
@@ -68,7 +69,9 @@ export function SectionTitle({ children, action }: { children: ReactNode; action
   );
 }
 
+/** Only in mock mode: real data must never be labelled as fictitious. */
 export function DemoTag({ className }: { className?: string }) {
+  if (!isMockMode()) return null;
   return (
     <span
       className={cn(
