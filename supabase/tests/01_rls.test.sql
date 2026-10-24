@@ -1,7 +1,7 @@
 -- C2 — isolamento entre clientes, rascunhos, notas, planos, RPCs e anon.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(42);
+select plan(47);
 
 -- Fixtures (como postgres) -------------------------------------------------
 -- A = cliente com conta; B = outra cliente com conta; ADM = equipe.
@@ -144,6 +144,24 @@ select results_eq($$select storage_path from public.reorder_post_media('aaaaaaaa
     array['aaaaaaaa-0000-4000-8000-0000000000a2'::uuid,
           (select id from public.post_media where storage_path = 'clients/a/posts/f1/1.jpg')])$$,
   $$values ('clients/a/posts/f1/2.jpg'), ('clients/a/posts/f1/1.jpg')$$, 'admin reordena o carrossel');
+
+-- I4: a lista precisa ser exatamente o conjunto de mídias do post.
+select throws_ok($$select public.reorder_post_media('aaaaaaaa-0000-4000-8000-0000000000f1',
+    array['aaaaaaaa-0000-4000-8000-0000000000a2'::uuid, 'aaaaaaaa-0000-4000-8000-0000000000a2'::uuid])$$,
+  '22023', null, 'reorder_post_media recusa ID duplicado');
+select throws_ok($$select public.reorder_post_media('aaaaaaaa-0000-4000-8000-0000000000f1',
+    array['aaaaaaaa-0000-4000-8000-0000000000a2'::uuid])$$,
+  '22023', null, 'reorder_post_media recusa mídia ausente');
+select throws_ok($$select public.reorder_post_media('aaaaaaaa-0000-4000-8000-0000000000f1',
+    array['aaaaaaaa-0000-4000-8000-0000000000a2'::uuid,
+          (select id from public.post_media where storage_path = 'clients/b/posts/f1/1.jpg')])$$,
+  '22023', null, 'reorder_post_media recusa mídia de outro post');
+select throws_ok($$select public.reorder_post_media('aaaaaaaa-0000-4000-8000-0000000000f1',
+    array['aaaaaaaa-0000-4000-8000-0000000000a2'::uuid, null])$$,
+  '22023', null, 'reorder_post_media recusa nulo');
+select results_eq($$select storage_path from public.post_media
+    where post_id = 'aaaaaaaa-0000-4000-8000-0000000000f1' order by position$$,
+  $$values ('clients/a/posts/f1/2.jpg'), ('clients/a/posts/f1/1.jpg')$$, 'ordem intacta após as recusas');
 
 -- anon -----------------------------------------------------------------------
 reset role;

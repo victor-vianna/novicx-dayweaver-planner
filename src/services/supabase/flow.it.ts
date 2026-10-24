@@ -1,7 +1,8 @@
 // MVP flow through the real services: admin creates a post and uploads art →
 // draft stays invisible to the client → admin releases it → the client sees
 // art + caption via signed URL and marks it published → another client and
-// anon see nothing. Cleans up only the post and files it created.
+// anon see nothing. Cleans up only the post and files it created; a failed
+// cleanup fails the suite.
 // Local stack: npm run db:reset && npm run test:supabase
 // Remote dev project: npm run e2e:setup:remote && npm run test:supabase:remote
 import { execSync } from "node:child_process";
@@ -9,17 +10,14 @@ import { readFileSync } from "node:fs";
 
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
-const REMOTE = process.env["E2E_TARGET"] === "remote";
-const REMOTE_URL = "https://smhrcfiwpqhumdclzdre.supabase.co";
+import {
+  assertDevTarget,
+  assertSafePassword,
+  E2E_ENV_FILE,
+  parseEnv,
+} from "../../../scripts/lib/e2e-env.ts";
 
-const parseEnv = (text: string) =>
-  Object.fromEntries(
-    text
-      .split(/\r?\n/)
-      .map((line) => line.match(/^([A-Z0-9_]+)="?(.*?)"?$/))
-      .filter((m): m is RegExpMatchArray => m !== null)
-      .map((m) => [m[1], m[2]]),
-  );
+const REMOTE = process.env["E2E_TARGET"] === "remote";
 
 let url: string | undefined;
 let key: string;
@@ -28,13 +26,12 @@ let ADMIN: string;
 let MARINA: string;
 let RAFAEL: string;
 if (REMOTE) {
-  const env = parseEnv(readFileSync(".env.e2e.local", "utf8"));
+  const env = parseEnv(readFileSync(E2E_ENV_FILE, "utf8"));
+  assertDevTarget(env);
+  assertSafePassword(env["E2E_PASSWORD"]);
   url = env["E2E_SUPABASE_URL"];
-  if (url !== REMOTE_URL)
-    throw new Error(`Refusing to run: ${url ?? "no URL"} is not ${REMOTE_URL}.`);
   key = env["E2E_SUPABASE_PUBLISHABLE_KEY"] ?? "";
-  if (!key.startsWith("sb_publishable_")) throw new Error("E2E key must be the publishable key.");
-  PASSWORD = env["E2E_PASSWORD"] ?? "";
+  PASSWORD = env["E2E_PASSWORD"];
   [ADMIN, MARINA, RAFAEL] = ["e2e-admin@example.com", "e2e-a@example.com", "e2e-b@example.com"];
 } else {
   const env = parseEnv(execSync("npx supabase status -o env", { encoding: "utf8" }));
@@ -73,6 +70,8 @@ async function as(email: string) {
 let postId = "";
 let marinaId = "";
 let mediaPath = "";
+/** Every object this run uploaded, kept apart from the database rows. */
+const uploaded = new Set<string>();
 
 describe(`Supabase MVP flow (${REMOTE ? "remote dev" : "local stack"})`, () => {
   beforeAll(async () => {
@@ -86,11 +85,28 @@ describe(`Supabase MVP flow (${REMOTE ? "remote dev" : "local stack"})`, () => {
     if (!postId) return;
     await as(ADMIN);
     const post = await posts.getPost(postId, { includeDrafts: true });
-    if (post?.media.length)
-      await db()
+    for (const m of post?.media ?? []) uploaded.add(m.storage_path);
+
+    // Files first: deleting the post cascades post_media, the only other record
+    // of these paths. Storage reports a denied remove as an empty result, so the
+    // folder is listed afterwards to prove it is empty.
+    if (uploaded.size) {
+      const removed = await db()
         .storage.from(MEDIA_BUCKET)
-        .remove(post.media.map((m) => m.storage_path));
-    await db().from("posts").delete().eq("id", postId);
+        .remove([...uploaded]);
+      if (removed.error)
+        throw new Error(`Cleanup: storage remove failed: ${removed.error.message}`);
+    }
+    const folder = `clients/${marinaId}/posts/${postId}`;
+    const left = await db().storage.from(MEDIA_BUCKET).list(folder);
+    if (left.error) throw new Error(`Cleanup: cannot list ${folder}: ${left.error.message}`);
+    if (left.data.length) {
+      throw new Error(`Cleanup: files left in ${folder}: ${left.data.map((o) => o.name).join()}`);
+    }
+
+    const deleted = await db().from("posts").delete().eq("id", postId).select("id");
+    if (deleted.error) throw new Error(`Cleanup: post delete failed: ${deleted.error.message}`);
+    if (deleted.data.length !== 1) throw new Error(`Cleanup: post ${postId} was not deleted.`);
     await auth.signOut();
   });
 
@@ -117,6 +133,7 @@ describe(`Supabase MVP flow (${REMOTE ? "remote dev" : "local stack"})`, () => {
       jpeg("m-autocuidado.jpg"),
       jpeg("h-contrato.jpg"),
     ]);
+    for (const m of withMedia.media) uploaded.add(m.storage_path);
     expect(withMedia.format).toBe("carousel");
     expect(withMedia.media.map((m) => m.position)).toEqual([0, 1]);
     expect(withMedia.media[0]!.storage_path).toMatch(
@@ -142,6 +159,7 @@ describe(`Supabase MVP flow (${REMOTE ? "remote dev" : "local stack"})`, () => {
     await as(ADMIN);
     const before = await posts.getPost(postId, { includeDrafts: true });
     const replaced = await media.replacePostMedia(before!.media[0]!.id, jpeg("h-escritorio.jpg"));
+    for (const m of replaced.media) uploaded.add(m.storage_path);
     expect(replaced.media[0]!.storage_path).not.toBe(mediaPath);
     const { data: old } = await db()
       .storage.from(MEDIA_BUCKET)
