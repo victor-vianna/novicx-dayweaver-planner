@@ -1,14 +1,20 @@
-import { readFileSync } from "node:fs";
+import { execFile } from "node:child_process";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { pathToFileURL } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
 import {
+  acquireLock,
   buildCodexArgs,
   checkLock,
   extractThreadId,
   isApproved,
   MAX_ATTEMPTS,
   parseArgs,
+  releaseLock,
   runJob,
   TIMEOUT_MS,
   validateResult,
@@ -23,6 +29,7 @@ const reviewSchema = JSON.parse(
 ) as JsonSchema;
 const taskSchemaText = readFileSync("docs/orquestracao/task-schema.json", "utf8");
 const SHA = "0123456789abcdef0123456789abcdef01234567";
+const BASE = "924c26e8b65d4500a1e26e47e824f1fa5b38660e";
 
 const review = (over: Record<string, unknown> = {}) => ({
   task_id: "O0",
@@ -44,6 +51,7 @@ const args = (over: Partial<JobArgs> = {}): JobArgs => ({
   effort: "high",
   resume: false,
   multiAgent: false,
+  base: "924c26e",
   ...over,
 });
 
@@ -51,6 +59,8 @@ describe("parseArgs", () => {
   it("parses a review", () => {
     expect(
       parseArgs([
+        "--base",
+        "924c26e",
         "--kind",
         "review",
         "--task",
@@ -82,6 +92,15 @@ describe("parseArgs", () => {
   });
   it("rejects task ids that could escape the runs folder", () => {
     expect(() => parseArgs(["--kind", "task", "--task", "../x", "--round", "1"])).toThrow(/task/);
+  });
+});
+
+describe("parseArgs base", () => {
+  it("requires an immutable --base SHA for reviews", () => {
+    const review = ["--kind", "review", "--task", "T1", "--round", "1", "--sha", "abc1234"];
+    expect(() => parseArgs(review)).toThrow(/--base/);
+    expect(() => parseArgs([...review, "--base", "claude/ciclo-3"])).toThrow(/SHA/);
+    expect(parseArgs([...review, "--base", "924c26e"]).base).toBe("924c26e");
   });
 });
 
@@ -193,6 +212,7 @@ function harness(opts: {
   free?: number;
   alive?: boolean;
   dirty?: boolean;
+  notAncestor?: boolean;
   codex?: (n: number) => { stdout: string; output?: string } | Error;
 }) {
   const files: Record<string, string> = {
@@ -203,6 +223,7 @@ function harness(opts: {
   };
   const calls: { args: string[]; timeoutMs: number; input: string }[] = [];
   const logs: string[] = [];
+  const gitCalls: string[][] = [];
   const deps: JobDeps = {
     freemem: () => opts.free ?? 4 * 1024 ** 3,
     isAlive: () => opts.alive ?? false,
@@ -214,8 +235,16 @@ function harness(opts: {
     remove: (f) => {
       delete files[f];
     },
+    createExclusive: (f, d) => {
+      if (f in files) return false;
+      files[f] = d;
+      return true;
+    },
     git: async (_cwd, a) => {
+      gitCalls.push(a);
       if (a[0] === "status") return opts.dirty ? " M x" : "";
+      if (a[0] === "rev-parse" && a[1] === "--verify") return `${BASE}\n`;
+      if (a[0] === "merge-base" && opts.notAncestor) throw new Error("exit 1");
       if (a[0] === "rev-parse") return `${SHA}\n`;
       if (a[0] === "branch") return "codex/ciclo-3\n";
       return "";
@@ -236,7 +265,6 @@ function harness(opts: {
     runs: "/runs",
     reviews: "/reviews",
     promptFile: "/prompt.md",
-    base: "claude/ciclo-3",
     paths: {
       root: "/root",
       worktree: "/wt",
@@ -247,7 +275,7 @@ function harness(opts: {
       output: "/out.json",
     },
   };
-  return { files, calls, logs, deps, layout };
+  return { files, calls, logs, gitCalls, deps, layout };
 }
 
 const timeoutError = () =>
@@ -279,7 +307,7 @@ describe("runJob", () => {
   it("replaces a stale lock (dead PID)", async () => {
     const h = harness({ files: { "/lock": "999" }, alive: false });
     expect((await runJob(args(), h.layout, h.deps)).ok).toBe(true);
-    expect(h.logs).toContain("removing stale lock");
+    expect(h.calls).toHaveLength(1);
   });
 
   it("refuses with less than 1.5 GB free", async () => {
@@ -355,5 +383,92 @@ describe("runJob", () => {
     const out = await runJob(args({ kind: "task", task: "X8", sha: "" }), h.layout, h.deps);
     expect(out.ok).toBe(true);
     expect(h.files["/reviews/X8-r1.task.json"]).toBeDefined();
+  });
+});
+
+describe("runJob base and lock ownership", () => {
+  it("sends the resolved immutable base SHA, never a branch name", async () => {
+    const h = harness({});
+    expect((await runJob(args(), h.layout, h.deps)).ok).toBe(true);
+    expect(h.gitCalls).toContainEqual(["rev-parse", "--verify", "924c26e^{commit}"]);
+    expect(h.files["/runs/O0-r1.prompt.md"]).toContain(`base: ${BASE}`);
+  });
+
+  it("refuses a base that is not an ancestor of the reviewed SHA", async () => {
+    const h = harness({ notAncestor: true });
+    const out = await runJob(args(), h.layout, h.deps);
+    expect(out.ok).toBe(false);
+    expect(h.calls).toHaveLength(0);
+  });
+
+  it("does not delete a lock that another process took over", async () => {
+    const h = harness({
+      codex: () => {
+        h.files["/lock"] = "777"; // someone replaced the lock meanwhile
+        return { stdout: "", output: JSON.stringify(review()) };
+      },
+    });
+    await runJob(args(), h.layout, h.deps);
+    expect(h.files["/lock"]).toBe("777");
+  });
+});
+
+describe("acquireLock / releaseLock on the real filesystem", () => {
+  const realFs = {
+    createExclusive: (f: string, d: string) => {
+      try {
+        writeFileSync(f, d, { flag: "wx" });
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    read: (f: string) => {
+      try {
+        return readFileSync(f, "utf8");
+      } catch {
+        return null;
+      }
+    },
+    remove: (f: string) => rmSync(f, { force: true }),
+  };
+
+  it("lets exactly one of several concurrent processes acquire the lock", async () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "orq-lock-"));
+    const lock = path.join(dir, "codex.lock");
+    const mod = pathToFileURL(path.resolve("scripts/orq/lib/job.ts")).href;
+    const code = [
+      `import { writeFileSync, readFileSync } from "node:fs";`,
+      `import { acquireLock } from ${JSON.stringify(mod)};`,
+      `const fs = {`,
+      `  createExclusive: (f, d) => { try { writeFileSync(f, d, { flag: "wx" }); return true; } catch { return false; } },`,
+      `  read: (f) => { try { return readFileSync(f, "utf8"); } catch { return null; } },`,
+      `  remove: () => {},`,
+      `};`,
+      `console.log(acquireLock(fs, ${JSON.stringify(lock)}, process.pid, () => true));`,
+    ].join("\n");
+    const run = () =>
+      new Promise<string>((resolve, reject) =>
+        execFile(process.execPath, ["--input-type=module", "-e", code], (err, out) =>
+          err ? reject(err) : resolve(out.trim()),
+        ),
+      );
+    const results = await Promise.all([run(), run(), run(), run()]);
+    expect(results.filter((r) => r === "acquired")).toHaveLength(1);
+    expect(readFileSync(lock, "utf8")).toMatch(/^\d+$/);
+    rmSync(dir, { recursive: true, force: true });
+  }, 30_000);
+
+  it("replaces a stale lock and releases only its own", () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "orq-lock-"));
+    const lock = path.join(dir, "codex.lock");
+    writeFileSync(lock, "999");
+    expect(acquireLock(realFs, lock, 1001, () => false)).toBe("acquired");
+    expect(acquireLock(realFs, lock, 1002, () => true)).toBe("busy");
+    releaseLock(realFs, lock, 1002);
+    expect(readFileSync(lock, "utf8")).toBe("1001");
+    releaseLock(realFs, lock, 1001);
+    expect(realFs.read(lock)).toBeNull();
+    rmSync(dir, { recursive: true, force: true });
   });
 });

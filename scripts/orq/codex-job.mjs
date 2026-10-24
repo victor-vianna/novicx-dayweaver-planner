@@ -1,7 +1,7 @@
 // Runs one Codex job (review or task) for the orchestration queue
 // (docs/orquestracao/ORQUESTRACAO.md §4). Run from the main worktree:
-//   node scripts/orq/codex-job.mjs --kind review --task T1 --round 1 --sha <sha> [--effort xhigh] [--resume] [--multi-agent]
-//   node scripts/orq/codex-job.mjs --kind task   --task X8 --round 1 [--effort high]
+//   node scripts/orq/codex-job.mjs --kind review --task T1 --round 1 --sha <sha> --base <sha> [--effort xhigh] [--resume] [--multi-agent]
+//   node scripts/orq/codex-job.mjs --kind task   --task X8 --round 1 [--base <sha>] [--effort high]
 // Logic lives in lib/job.ts; this file only wires real processes and files.
 // Codex is spawned as `node <codex.js>` with execFile (no shell: the path has
 // spaces and accents). Override the entry point with CODEX_JS if needed.
@@ -43,7 +43,6 @@ const layout = {
   runs,
   reviews: abs("docs/orquestracao/revisoes"),
   promptFile: abs("docs/orquestracao/PROMPT-CODEX.md"),
-  base: process.env.ORQ_BASE ?? "claude/ciclo-3",
   paths: {
     root,
     worktree: path.join(parent, args.kind === "review" ? "novicx-review" : "novicx-codex"),
@@ -108,6 +107,16 @@ const deps = {
     writeFileSync(file, data);
   },
   remove: (file) => rmSync(file, { force: true }),
+  createExclusive: (file, data) => {
+    mkdirSync(path.dirname(file), { recursive: true });
+    try {
+      writeFileSync(file, data, { flag: "wx" });
+      return true;
+    } catch (err) {
+      if (err.code === "EEXIST") return false;
+      throw err;
+    }
+  },
   git: async (cwd, argv) => (await run("git", ["-C", cwd, ...argv])).stdout,
   codex: (argv, opts) => run(process.execPath, [codexJs, ...argv], opts),
   log: (line) => console.error(`[codex-job ${name}] ${line}`),

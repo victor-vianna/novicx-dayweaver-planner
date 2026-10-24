@@ -20,6 +20,8 @@ export interface JobArgs {
   effort: Effort;
   resume: boolean;
   multiAgent: boolean;
+  /** Immutable base commit for the diff (required for reviews). */
+  base: string;
 }
 
 export function parseArgs(argv: string[]): JobArgs {
@@ -42,7 +44,19 @@ export function parseArgs(argv: string[]): JobArgs {
   if (!["low", "medium", "high", "xhigh"].includes(effort)) throw new Error("Invalid --effort.");
   const resume = argv.includes("--resume");
   if (resume && round < 2) throw new Error("--resume needs round ≥ 2.");
-  return { kind, task, round, sha, effort, resume, multiAgent: argv.includes("--multi-agent") };
+  const base = get("base") ?? "";
+  if (base && !/^[0-9a-f]{7,40}$/.test(base)) throw new Error("--base must be a commit SHA.");
+  if (kind === "review" && !base) throw new Error("--base <sha> is required for reviews.");
+  return {
+    kind,
+    task,
+    round,
+    sha,
+    effort,
+    resume,
+    multiAgent: argv.includes("--multi-agent"),
+    base,
+  };
 }
 
 /** Lock file holds the owner PID. Alive → refuse; dead or unreadable → stale. */
@@ -54,6 +68,35 @@ export function checkLock(
   const pid = Number(content.trim());
   if (!Number.isInteger(pid) || pid <= 0) return "stale";
   return isAlive(pid) ? "busy" : "stale";
+}
+
+export interface LockFs {
+  /** Creates the file only if it does not exist (open flag "wx"); false if it exists. */
+  createExclusive(file: string, data: string): boolean;
+  read(file: string): string | null;
+  remove(file: string): void;
+}
+
+/**
+ * Atomic acquisition: the exclusive create is the only step that grants the
+ * lock, so two processes can never both win. A stale lock (dead PID) is removed
+ * and the create retried once; losing that retry means another process won.
+ */
+export function acquireLock(
+  fs: LockFs,
+  file: string,
+  pid: number,
+  isAlive: (pid: number) => boolean,
+): "acquired" | "busy" {
+  if (fs.createExclusive(file, String(pid))) return "acquired";
+  if (checkLock(fs.read(file), isAlive) === "busy") return "busy";
+  fs.remove(file);
+  return fs.createExclusive(file, String(pid)) ? "acquired" : "busy";
+}
+
+/** Removes the lock only while it still holds our PID. */
+export function releaseLock(fs: LockFs, file: string, pid: number): void {
+  if (fs.read(file)?.trim() === String(pid)) fs.remove(file);
 }
 
 export function runName(args: Pick<JobArgs, "task" | "round">): string {
@@ -77,7 +120,7 @@ export function buildPrompt(promptMd: string, args: JobArgs, paths: JobPaths, ba
     `task_id: ${args.task}`,
     `round: ${args.round}`,
     args.kind === "review" ? `sha: ${args.sha}` : `branch: ${CODEX_BRANCH}`,
-    `base: ${base}`,
+    `base: ${base} (immutable; review the diff base..sha)`,
     `brief: ${paths.brief}`,
     `evidence: ${paths.evidence}`,
     `previous_review: ${paths.previousReview ?? "none"}`,
@@ -192,7 +235,7 @@ export interface ExecResult {
   stderr: string;
 }
 
-export interface JobDeps {
+export interface JobDeps extends LockFs {
   freemem(): number;
   isAlive(pid: number): boolean;
   pid: number;
@@ -215,7 +258,6 @@ export interface JobLayout {
   reviews: string; // docs/orquestracao/revisoes
   paths: JobPaths;
   promptFile: string;
-  base: string;
 }
 
 export type JobOutcome =
@@ -228,13 +270,9 @@ export async function runJob(args: JobArgs, layout: JobLayout, deps: JobDeps): P
     return { ok: false, reason: `free memory ${(free / 1024 ** 3).toFixed(2)} GB < 1.5 GB` };
   }
 
-  const lock = checkLock(deps.read(layout.lock), deps.isAlive);
-  if (lock === "busy") return { ok: false, reason: "another Codex job holds the lock" };
-  if (lock === "stale") {
-    deps.log("removing stale lock");
-    deps.remove(layout.lock);
+  if (acquireLock(deps, layout.lock, deps.pid, deps.isAlive) === "busy") {
+    return { ok: false, reason: "another Codex job holds the lock" };
   }
-  deps.write(layout.lock, String(deps.pid));
 
   try {
     const name = runName(args);
@@ -254,12 +292,23 @@ export async function runJob(args: JobArgs, layout: JobLayout, deps: JobDeps): P
     if ((await deps.git(wt, ["status", "--porcelain"])).trim()) {
       return { ok: false, reason: `worktree ${wt} is dirty` };
     }
+    // The base is always an immutable SHA: a branch name would move while the
+    // job runs and turn the diff into something other than the delivery.
+    const baseRef = args.base || (await deps.git(wt, ["rev-parse", "HEAD"])).trim();
+    const base = (await deps.git(wt, ["rev-parse", "--verify", `${baseRef}^{commit}`])).trim();
     let fullSha = "";
     if (args.kind === "review") {
       await deps.git(wt, ["checkout", "--quiet", "--detach", args.sha]);
       fullSha = (await deps.git(wt, ["rev-parse", "HEAD"])).trim();
       if (!fullSha.startsWith(args.sha)) {
         return { ok: false, reason: `HEAD ${fullSha} ≠ ${args.sha}` };
+      }
+      if (base === fullSha)
+        return { ok: false, reason: "base equals the reviewed SHA (empty diff)" };
+      try {
+        await deps.git(wt, ["merge-base", "--is-ancestor", base, fullSha]);
+      } catch {
+        return { ok: false, reason: `base ${base} is not an ancestor of ${fullSha}` };
       }
     } else {
       const branch = (await deps.git(wt, ["branch", "--show-current"])).trim();
@@ -272,7 +321,7 @@ export async function runJob(args: JobArgs, layout: JobLayout, deps: JobDeps): P
     if (schemaText === null || promptMd === null)
       return { ok: false, reason: "schema or prompt missing" };
     const schema = JSON.parse(schemaText) as JsonSchema;
-    const prompt = buildPrompt(promptMd, args, layout.paths, layout.base);
+    const prompt = buildPrompt(promptMd, args, layout.paths, base);
     deps.write(`${layout.runs}/${name}.prompt.md`, prompt);
 
     const prevThread = args.resume
@@ -326,6 +375,6 @@ export async function runJob(args: JobArgs, layout: JobLayout, deps: JobDeps): P
     }
     return { ok: false, reason: `${name} failed after ${attempts} attempts: ${lastError}` };
   } finally {
-    deps.remove(layout.lock);
+    releaseLock(deps, layout.lock, deps.pid);
   }
 }

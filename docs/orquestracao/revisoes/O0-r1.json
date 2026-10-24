@@ -1,0 +1,115 @@
+{
+  "task_id": "O0",
+  "round": 1,
+  "commit": "4047678",
+  "verdict": "changes_requested",
+  "acceptance": [
+    {
+      "criterion": "1. Lock recusa PID vivo, remove PID morto e libera o próprio lock.",
+      "status": "failed",
+      "evidence": "Os testes cobrem os casos sequenciais, mas scripts/orq/lib/job.ts:231-237 faz read/check/write separados. Duas invocações concorrentes podem observar lock livre, sobrescrevê-lo e executar simultaneamente."
+    },
+    {
+      "criterion": "2. Recusa rodada > 3, resume na rodada 1 e memória livre < 1,5 GB.",
+      "status": "verified",
+      "evidence": "scripts/orq/lib/job.ts:30-44 e 225-229 implementam as recusas; vitest.log registra 22/22 testes, incluindo esses cenários."
+    },
+    {
+      "criterion": "3. Máximo de duas tentativas persistentes; timeout de 45 minutos conta como tentativa.",
+      "status": "verified",
+      "evidence": "scripts/orq/lib/job.ts:241-245 e 286-329 persistem o contador antes da execução e limitam a repetição; os testes cobrem timeout, duas falhas e contador herdado. Evidência: 22/22 testes."
+    },
+    {
+      "criterion": "4. Codex usa execFile sem shell; review exige worktree limpo e SHA correto; task exige codex/ciclo-3.",
+      "status": "verified",
+      "evidence": "scripts/orq/codex-job.mjs:71-92 usa execFile; scripts/orq/lib/job.ts:254-270 confere limpeza, checkout/HEAD e branch. Testes cobrem argumentos sem shell, worktree sujo e branch de task."
+    },
+    {
+      "criterion": "5. Resultado validado pelo schema e por task_id, round e commit; resultado inválido não é copiado.",
+      "status": "verified",
+      "evidence": "scripts/orq/lib/schema.ts:14-48 valida required, enum, tipos e additionalProperties recursivamente; scripts/orq/lib/job.ts:119-143 valida identidade e commit. Testes cobrem JSON inválido, propriedade extra, enum, rodada e commit incorretos."
+    },
+    {
+      "criterion": "6. JSON válido é copiado para o destino correto e thread_id é salvo para resume.",
+      "status": "verified",
+      "evidence": "scripts/orq/lib/job.ts:305-323 salva eventos/thread e copia review ou task; testes verificam O0-r1.json, X8-r1.task.json e thread t1."
+    },
+    {
+      "criterion": "7. isApproved não confia no verdict e exige ausência de bloqueante/importante, aceite integral com evidência e mesmo commit.",
+      "status": "verified",
+      "evidence": "scripts/orq/lib/job.ts:175-186 implementa a regra; os testes exercitam melhoria, importante, critério não verificável, evidência vazia, aceite vazio, commit diferente e verdict aprovado com bloqueante."
+    },
+    {
+      "criterion": "8. Nenhum segredo nos arquivos e .orq ignorado pelo Git.",
+      "status": "verified",
+      "evidence": ".gitignore inclui .orq/; varredura direcionada do diff encontrou somente referências textuais às regras de segredo/service_role, sem credenciais ou valores sensíveis."
+    }
+  ],
+  "checks": [
+    {
+      "command": "git rev-parse HEAD",
+      "result": "pass",
+      "summary": "HEAD = 404767841fc1d03834b5ab75997c42c817c5249e, correspondente ao SHA solicitado."
+    },
+    {
+      "command": "npx tsc --noEmit",
+      "result": "pass",
+      "summary": "Concluiu com código 0 e sem diagnósticos."
+    },
+    {
+      "command": "npm run lint",
+      "result": "pass",
+      "summary": "Concluiu com código 0: 0 erros e 8 avisos react-refresh preexistentes fora do escopo."
+    },
+    {
+      "command": "npx vitest run --maxWorkers=2 scripts/orq/lib/job.test.ts",
+      "result": "fail",
+      "summary": "O ambiente impediu o carregamento da configuração com spawn EPERM; não foi uma falha de asserção. A evidência do coordenador registra 1 arquivo e 22/22 testes aprovados."
+    },
+    {
+      "command": "npx vitest run --maxWorkers=2 --configLoader runner scripts/orq/lib/job.test.ts",
+      "result": "fail",
+      "summary": "A alternativa sem bundling também não carregou a configuração neste ambiente: require is not defined."
+    },
+    {
+      "command": "git diff --check 924c26e..4047678",
+      "result": "pass",
+      "summary": "Nenhum erro de whitespace no delta imutável indicado pelo brief."
+    },
+    {
+      "command": "npm run build",
+      "result": "not_run",
+      "summary": "Não aplicável: o delta não altera build nem rotas."
+    },
+    {
+      "command": "git status --short",
+      "result": "pass",
+      "summary": "Worktree limpo após remover somente o cache não versionado criado pela consulta Trail."
+    }
+  ],
+  "findings": [
+    {
+      "id": "O0-B1",
+      "severity": "bloqueante",
+      "file": "scripts/orq/lib/job.ts",
+      "line": 231,
+      "title": "Aquisição do lock não é atômica",
+      "detail": "A sequência lê o lock, verifica o PID e só depois escreve o próprio PID. Duas execuções iniciadas juntas podem ler null antes de qualquer escrita, ambas adquirir logicamente o lock e rodar dois jobs Codex. Além disso, cada finally remove o caminho sem confirmar que ainda é o dono, podendo apagar o lock da outra execução. Isso viola a exclusão mútua exigida pelo critério 1 e pela regra de um único processo pesado.",
+      "expected_fix": "Implementar aquisição atômica no adaptador de filesystem, por exemplo criando o arquivo com flag exclusiva wx. Para lock obsoleto, remover e repetir a aquisição; na liberação, remover somente se o conteúdo ainda corresponder ao PID proprietário. Adicionar teste concorrente/integrado.",
+      "repro_test": "const [a, b] = await Promise.all([acquireLock(lock, 1001), acquireLock(lock, 1002)]); expect([a, b].filter(Boolean)).toHaveLength(1); expect(readFileSync(lock, 'utf8')).toMatch(/^(1001|1002)$/);",
+      "previous_id": ""
+    },
+    {
+      "id": "O0-I1",
+      "severity": "importante",
+      "file": "scripts/orq/codex-job.mjs",
+      "line": 46,
+      "title": "Base móvel produz diff incorreto para a revisão",
+      "detail": "O JOB usa por padrão o nome móvel claude/ciclo-3 em vez do commit-base imutável da tarefa. Nesta revisão, o brief declara base 924c26e, mas claude/ciclo-3 já aponta para 0113c6c; consequentemente, git diff claude/ciclo-3..4047678 mostrou a reversão de O1 e não a entrega O0. Se a branch ainda apontasse para o próprio SHA revisado, o diff seria vazio. Isso pode ocultar mudanças não revisadas ou gerar achados alheios.",
+      "expected_fix": "Exigir e transmitir um SHA-base imutável por JOB, obtido da tarefa/FILA ou informado por --base; validar que ele existe e é ancestral do SHA antes de iniciar. Não usar uma referência de branch mutável como padrão.",
+      "repro_test": "git diff --name-status claude/ciclo-3..4047678  # atualmente lista remoções de O1; git diff --name-status 924c26e..4047678 lista os arquivos reais de O0",
+      "previous_id": ""
+    }
+  ],
+  "summary": "Mudanças solicitadas. A lógica principal, schemas e 22 testes fornecidos cobrem quase todos os critérios, e tsc/lint passaram localmente. Contudo, o lock possui uma corrida que quebra a garantia de exclusão mútua, e a base móvel já fez este JOB apontar para o diff errado; a revisão usou 924c26e, declarado no brief, para analisar O0. O Vitest não pôde ser reexecutado nesta sandbox por limitações de spawn/configuração. Trail economizou aproximadamente 4.169 tokens nesta revisão."
+}
