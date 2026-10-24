@@ -18,8 +18,12 @@ npm run db:start        # sobe Postgres, Auth, Storage, Studio, Mailpit (Docker)
 npm run db:reset        # aplica migrations + supabase/seed.sql (dados fictícios)
 npm run db:seed-media   # envia as artes fictícias ao Storage local
 npm run db:test         # pgTAP: schema, RLS, Storage
+npm run test:supabase   # fluxo ponta a ponta pelos services (admin → upload → cliente)
 npm run db:status       # URL e chave publicável para o .env
 ```
+
+O Studio pode falhar no healthcheck em máquinas lentas; ele não é necessário:
+`npx supabase start -x studio`.
 
 `.env` local para usar o backend: `VITE_DATA_SOURCE=supabase` + URL/chave do
 `db:status`. Contas locais (senha `demo1234`): `equipe@novicx.com.br` (admin),
@@ -51,8 +55,14 @@ npx supabase db push
 ```
 
 Nunca rodar `db reset` remoto nem `seed.sql` no remoto. Depois do push:
-Authentication → URL Configuration: *Site URL* = URL da Vercel e *Redirect URLs*
-inclui `https://<app>.vercel.app/**` (recuperação de senha).
+
+- Authentication → URL Configuration: *Site URL* = URL da Vercel e *Redirect URLs*
+  inclui `https://<app>.vercel.app/**` (recuperação de senha).
+- Authentication → Sign In / Providers: provedor **Email ligado**, *Allow new
+  users to sign up* **desligado** (equivale ao `config.toml`: `[auth.email]
+  enable_signup = true` liga o provedor; `[auth] enable_signup = false` bloqueia
+  o cadastro público). Desligar o provedor bloqueia o login.
+- Conferir que o bucket `post-media` foi criado privado (a migration cria).
 
 **SMTP:** o SMTP padrão do Supabase só entrega para membros da equipe do
 projeto e tem limite baixo. Para clientes reais, configurar SMTP próprio
