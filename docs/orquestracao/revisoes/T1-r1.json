@@ -1,0 +1,82 @@
+{
+  "task_id": "T1",
+  "round": 1,
+  "commit": "f323494",
+  "verdict": "approved",
+  "acceptance": [
+    {
+      "criterion": "1. Migration aditiva; helpers preservam security definer, stable, search_path vazio e grants.",
+      "status": "verified",
+      "evidence": "O diff cria uma migration nova, sem alterar migrations aplicadas. `20261025120000_blocked_accounts.sql:9` adiciona apenas a coluna nullable; linhas 11-38 usam `create or replace`, `stable`, `security definer` e `set search_path = ''`. A migration-base revoga EXECUTE de anon/public e concede apenas a authenticated; CREATE OR REPLACE preserva esses grants."
+    },
+    {
+      "criterion": "2. Cliente bloqueada perde acesso aos dados, Storage e set_post_published; current_client_id retorna nulo.",
+      "status": "verified",
+      "evidence": "`03_blocked.test.sql:56-65` cobre current_client_id, clients, client_packages, posts, post_media, storage.objects e recusa da RPC com P0002. Evidência do coordenador registra `03_blocked.test.sql: 30/30 ok` com migrations pendentes."
+    },
+    {
+      "criterion": "3. Cliente bloqueada não consegue remover o próprio bloqueio.",
+      "status": "verified",
+      "evidence": "`03_blocked.test.sql:67-71` tenta atualizar blocked_at como authenticated e confirma, como postgres, que o valor permaneceu preenchido. O teste passou no lote 30/30."
+    },
+    {
+      "criterion": "4. Outra cliente e admin ativo permanecem funcionais; admin enxerga bloqueios.",
+      "status": "verified",
+      "evidence": "`03_blocked.test.sql:74-84` confirma acesso isolado da cliente B, leitura do próprio arquivo, `is_admin()` verdadeiro, leitura administrativa dos posts e visualização dos dois perfis bloqueados. O teste passou no lote 30/30."
+    },
+    {
+      "criterion": "5. Admin bloqueado perde privilégios de leitura e escrita.",
+      "status": "verified",
+      "evidence": "`03_blocked.test.sql:87-101` verifica is_admin falso, ausência de posts/planos/arquivos e recusas 42501 ao criar post, contratar plano e enviar arquivo. A inspeção das políticas e RPCs confirmou dependência de is_admin/current_client_id. O teste passou no lote 30/30."
+    },
+    {
+      "criterion": "6. anon permanece sem acesso e desbloquear restaura o acesso.",
+      "status": "verified",
+      "evidence": "`03_blocked.test.sql:103-114` comprova recusa 42501 para anon e restauração de posts/Storage após desbloqueio. A migration-base revoga tabelas/funções de anon e as políticas de Storage são restritas a authenticated. As evidências também registram 47/47 nos testes RLS e 13/13 nos testes de Storage."
+    },
+    {
+      "criterion": "7. pgTAP falha sem a migration, passa com --pending e não persiste migrations.",
+      "status": "verified",
+      "evidence": "`.orq/evidence/T1/db-test.log` registra ausência de TAP para 03_blocked sem pending; com E0+T1 pendentes registra 19/19, 47/47, 13/13 e 30/30. O log confirma `applied migrations unchanged (5)`, e o teste está envolvido por BEGIN/ROLLBACK."
+    }
+  ],
+  "checks": [
+    {
+      "command": "git rev-parse HEAD",
+      "result": "pass",
+      "summary": "HEAD confirmado em f3234949db0ff6142d42ea8fb8dd6f5bd3965ac3, correspondente ao SHA do JOB."
+    },
+    {
+      "command": "git diff --check 809fe7efd3b192448dc725554041812c7e1dcb74..f323494 -- docs/orquestracao/tarefas/T1.md supabase/migrations/20261025120000_blocked_accounts.sql supabase/tests/03_blocked.test.sql",
+      "result": "pass",
+      "summary": "Nenhum erro de whitespace no escopo revisado."
+    },
+    {
+      "command": "npx tsc --noEmit",
+      "result": "pass",
+      "summary": "Concluído com exit code 0 e sem diagnósticos."
+    },
+    {
+      "command": "npm run lint",
+      "result": "pass",
+      "summary": "Concluído com exit code 0: nenhum erro e 8 warnings preexistentes de react-refresh fora do escopo T1."
+    },
+    {
+      "command": "npx vitest run --maxWorkers=2 <arquivos afetados>",
+      "result": "not_run",
+      "summary": "O diff contém somente SQL e documentação; não há teste Vitest afetado ou criado."
+    },
+    {
+      "command": "npm run build",
+      "result": "not_run",
+      "summary": "O diff não altera build, rotas ou código da aplicação."
+    },
+    {
+      "command": "npm run db:test:remote -- --pending",
+      "result": "not_run",
+      "summary": "Não executado pelo revisor porque comandos contra banco remoto são proibidos; foi examinada a evidência do coordenador em `.orq/evidence/T1/db-test.log`."
+    }
+  ],
+  "findings": [],
+  "summary": "Entrega aprovada. A migration é aditiva, mantém o endurecimento dos helpers, e as políticas/RPCs dependentes bloqueiam imediatamente contas suspensas. A evidência pgTAP cobre os cenários de cliente, outra cliente, admin ativo, admin bloqueado, anon e desbloqueio; não foram encontrados defeitos bloqueantes ou importantes."
+}
