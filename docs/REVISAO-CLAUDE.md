@@ -1,5 +1,11 @@
 # Revisão Claude — Ciclo 3
 
+## X3 — 404 e erro em pt-BR (`61f31d1`, `codex/ciclo-3`)
+
+- **Data:** 2026-10-25 · **Veredito:** aprovado, sem itens.
+- **Diff:** só textos de `NotFoundComponent` e `ErrorComponent` em `__root.tsx`; provider de auth, `console.error` e `reportLovableError` inalterados. A tela não mostra `error.message` nem stack.
+- **Verificação do revisor:** teste novo 2/2; `tsc`, `eslint` e `npm run build` sem erros (`.orq/evidence/X3/build.log`).
+
 ## X2 — A11y do menu mobile (`021eb75`, `codex/ciclo-3`)
 
 - **Data:** 2026-10-25 · **Veredito:** aprovado, sem bloqueantes nem importantes.
