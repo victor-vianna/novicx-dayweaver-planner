@@ -1,5 +1,24 @@
 # Entrega Codex — Ciclo 1
 
+## X1 — `maxWorkers` do Vitest
+
+- **Branch:** `codex/ciclo-3`
+- **Commits:** nenhum; a sandbox negou a criação de `index.lock` no diretório
+  Git do worktree principal, que fica fora da raiz gravável.
+- **Mudança:** `vitest.config.ts` agora define `maxWorkers: 2`, preservando
+  `environment`, `globals`, `setupFiles`, `include`, plugins e aliases.
+- **Verificações:** `npx tsc --noEmit` e `npx eslint vitest.config.ts` passaram
+  sem erros. `npm test` não iniciou porque o Vite recebeu `spawn EPERM` ao
+  carregar a configuração. O fallback com `--configLoader native` executou 20
+  arquivos e 170 testes em 44,91 s: 19 arquivos/168 testes passaram e os dois
+  testes que criam subprocessos em `scripts/orq/lib/job.test.ts` falharam pelo
+  mesmo bloqueio `spawn EPERM` da sandbox.
+- **Limitações:** o critério de `npm test` verde sem flags não pôde ser validado
+  neste ambiente. A configuração compila e passa no lint, mas a suíte completa
+  deve ser reexecutada fora desta sandbox.
+- **Revisão do Claude:** confirmar `npm test` sem flags e criar os commits da
+  entrega após validar o diff, já que este worktree não pôde gravar no Git.
+
 - **Branch:** `codex/ciclo-1`
 - **Commits:**
   - `7d470a8` — Configura finais de linha do repositório
