@@ -1,0 +1,11 @@
+# Nunca enviar arquivos locais de ambiente ou de ferramentas no deploy.
+.env
+.env.*
+!.env.example
+.orq/
+.claude/
+.cursor/
+.trail/
+node_modules/
+dist/
+.output/
