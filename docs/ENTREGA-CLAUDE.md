@@ -6,15 +6,15 @@
 
 ## Commits
 
-| Commit | Conteúdo |
-| --- | --- |
-| `c35af91` | C0 — fundação (cliente Supabase, `VITE_DATA_SOURCE`) |
-| `2a0a0b9` | C4/C5 — auth real e services Supabase |
-| `0cf39e4` | C6 — entrega administrativa |
-| `6462dad` | C1–C3 — schema, RLS, Storage, seed, pgTAP |
-| `b991484` | teste ponta a ponta dos services; ajustes de operação |
+| Commit    | Conteúdo                                                                  |
+| --------- | ------------------------------------------------------------------------- |
+| `c35af91` | C0 — fundação (cliente Supabase, `VITE_DATA_SOURCE`)                      |
+| `2a0a0b9` | C4/C5 — auth real e services Supabase                                     |
+| `0cf39e4` | C6 — entrega administrativa                                               |
+| `6462dad` | C1–C3 — schema, RLS, Storage, seed, pgTAP                                 |
+| `b991484` | teste ponta a ponta dos services; ajustes de operação                     |
 | `8f331aa` | migrations aplicadas no remoto; runner pgTAP sem Docker; 2 endurecimentos |
-| `e450f38` | fluxo E2E contra o remoto |
+| `e450f38` | fluxo E2E contra o remoto                                                 |
 
 ## O que mudou nesta etapa
 
@@ -65,3 +65,23 @@ advisors               segurança: só 0029 nas RPCs/helpers (intencional, valid
 - `scripts/db-test-remote.mjs` — garantia de não gravar nada no remoto.
 - `scripts/e2e-remote-setup.mjs` e `src/services/supabase/flow.it.ts` — escopo da limpeza
   (só o que o teste cria) e checagens de ref/URL/chave publicável.
+
+---
+
+# Ciclo 3 — entregas do Claude (detalhe em `docs/orquestracao/tarefas/<ID>.md`)
+
+| ID  | Commit(s)           | Estado                              | Verificações                                                                                |
+| --- | ------------------- | ----------------------------------- | ------------------------------------------------------------------------------------------- |
+| T4a | 1f6040c             | aprovada; push 2026-10-25 (AH)      | pgTAP 04 9/9                                                                                |
+| T5  | 5ffad91, a148692    | aprovada (r2); push 2026-10-25 (AH) | pgTAP 05 18/18; npm 213/213                                                                 |
+| —   | cde03c0             | tipos regerados pós-push            | migrations 9/9; pgTAP 136/136 sem pendentes; E2E remoto 9/9; advisors inalterados; tsc      |
+| T4b | 26c6119 (subagente) | em revisão CXR r1                   | npm 231/231; tsc; lint 0 erros; build                                                       |
+| T6  | 596f52d             | aguardando revisão CXR ★            | pgTAP `--pending` 19·48·13·30·9·18·27 (sem a migration: 01 e 06 falham); npm 218/218; build |
+
+Limitações abertas: E2E da T6 (CORS do download, recusa de exclusão/escrita direta)
+só roda depois do push; `updatePost` com texto + status são 2 chamadas (o status é
+atômico); remover a última arte de post liberado segue possível.
+
+O Codex deve revisar na T6: privilégio por coluna em `posts` (nenhum caminho do app
+escreve `status` direto), `admin_set_post_status` (republicar mantém registro), a
+política de exclusão restrita e a limpeza do E2E (volta para rascunho antes de excluir).
