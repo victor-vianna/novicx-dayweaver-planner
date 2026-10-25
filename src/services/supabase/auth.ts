@@ -46,6 +46,10 @@ export async function signInWithPassword(email: string, password: string): Promi
     password,
   });
   if (error?.code === "user_banned") throw new Error(ACCESS_SUSPENDED);
+  // Supabase also answers 400 for an unconfirmed e-mail; don't call that a wrong password.
+  if (error?.code === "email_not_confirmed") {
+    throw new Error("Seu acesso ainda não foi confirmado. Fale com a equipe NOVICX.");
+  }
   if (error || !data.user) {
     throw new Error(
       error?.status === 400 || error?.code === "invalid_credentials"

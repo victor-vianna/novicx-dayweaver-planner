@@ -42,3 +42,6 @@ dist-ssr
 # Orquestração Claude + Codex: runs, evidências e locks (nunca versionar)
 .orq/
 .vercel
+
+# Worktrees temporárias de agentes
+.claude/worktrees/

@@ -49,6 +49,14 @@ describe("suspended accounts", () => {
     expect(signOut).toHaveBeenCalled();
   });
 
+  it("tells an unconfirmed e-mail apart from a wrong password", async () => {
+    signInWithPassword.mockResolvedValue({
+      data: { user: null },
+      error: { status: 400, code: "email_not_confirmed", message: "Email not confirmed" },
+    });
+    await expect(signIn("ana@example.com", "x")).rejects.toThrow("Seu acesso ainda não foi confirmado.");
+  });
+
   it("keeps wrong credentials distinct", async () => {
     signInWithPassword.mockResolvedValue({
       data: { user: null },

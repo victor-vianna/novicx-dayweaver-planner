@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "trail": {
+      "type": "stdio",
+      "command": "cmd",
+      "args": [
+        "/c",
+        "trail",
+        "mcp"
+      ],
+      "env": {}
+    }
+  }
+}
