@@ -1,0 +1,45 @@
+{
+  "task_id": "X1",
+  "round": 1,
+  "status": "blocked",
+  "branch": "codex/ciclo-3",
+  "commits": [],
+  "files_changed": [
+    "vitest.config.ts",
+    "docs/ENTREGA-CODEX.md"
+  ],
+  "checks": [
+    {
+      "command": "npm test",
+      "result": "fail",
+      "summary": "Vitest não iniciou: o Vite recebeu spawn EPERM ao carregar vitest.config.ts na sandbox."
+    },
+    {
+      "command": "node --import \"data:text/javascript,globalThis.__dirname%3Dprocess.cwd()%3B\" node_modules/vitest/vitest.mjs run --configLoader native --pool=threads",
+      "result": "fail",
+      "summary": "Executou 20 arquivos e 170 testes em 44,91 s; 19 arquivos/168 testes passaram. Dois testes de scripts/orq/lib/job.test.ts falharam ao criar subprocessos por spawn EPERM."
+    },
+    {
+      "command": "npx tsc --noEmit",
+      "result": "pass",
+      "summary": "Concluído sem erros após manter somente a opção compatível maxWorkers."
+    },
+    {
+      "command": "npx eslint vitest.config.ts",
+      "result": "pass",
+      "summary": "Concluído sem erros."
+    },
+    {
+      "command": "git diff --check",
+      "result": "pass",
+      "summary": "Nenhum erro de whitespace no diff final."
+    }
+  ],
+  "out_of_scope_requests": [],
+  "limitations": [
+    "A sandbox impediu a criação de .git/worktrees/novicx-codex/index.lock, pois o diretório Git compartilhado está fora da raiz gravável; portanto, as alterações não puderam ser commitadas.",
+    "O critério de npm test verde sem flags não pôde ser comprovado: o comando foi bloqueado por spawn EPERM antes da suíte, e o fallback encontrou o mesmo bloqueio nos dois testes que criam subprocessos.",
+    "As alterações estão presentes no worktree e precisam ser commitadas pelo coordenador após reexecutar npm test fora desta sandbox."
+  ],
+  "summary": "Configurado maxWorkers: 2 no Vitest sem remover opções existentes e registrada a entrega X1. TypeScript, ESLint e diff check passaram, mas o JOB ficou bloqueado porque a sandbox impediu tanto o commit quanto a validação integral de npm test."
+}

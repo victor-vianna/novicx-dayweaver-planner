@@ -88,9 +88,13 @@ Objetivo: implementar a tarefa do brief dentro da sua faixa de arquivos.
    `src/features/auth/**`, `package.json`, `.env*`, `docs/orquestracao/**`.
    Precisa de algo fora da faixa? Registre em `out_of_scope_requests`.
 3. Preserve o visual, os contratos de integração e o modo mock.
-4. Commits pequenos e descritivos na `codex/ciclo-3`. Rode as verificações
-   direcionadas (`--maxWorkers=2`) e registre em `checks`.
-5. Atualize `docs/ENTREGA-CODEX.md` com a seção da tarefa (commits, mudanças,
+4. **Não commite:** a sandbox não grava no `.git` compartilhado do worktree. Deixe
+   as mudanças no worktree; o coordenador commita o diff sem alterá-lo. Isso não é
+   bloqueio: com o trabalho pronto, use `status: "delivered"` e `commits: []`.
+   Rode as verificações direcionadas e registre em `checks` (vitest: use o
+   comando alternativo do item de revisão se `spawn EPERM`; falhas só de
+   subprocesso dentro da sandbox não reprovam).
+5. Atualize `docs/ENTREGA-CODEX.md` com a seção da tarefa (mudanças,
    verificações, limitações, o que o Claude deve revisar).
 6. Rodada ≥ 2: corrija só os achados da revisão do Claude anexada.
 7. Tarefas H* (homologação visual): rode o app localmente (`npm run dev`,
