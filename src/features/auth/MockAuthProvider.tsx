@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { AuthContext, type AuthStatus } from "@/features/auth/auth-context";
+import { ACCESS_SUSPENDED } from "@/lib/access";
 import {
   getSessionFor,
   requestPasswordReset,
@@ -40,6 +41,7 @@ export function MockAuthProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<AuthStatus>("loading");
   const [session, setSession] = useState<MockSession | null>(null);
   const [previewClientId, setPreviewClientId] = useState<string | null>(null);
+  const [sessionNotice, setSessionNotice] = useState<string | null>(null);
 
   useEffect(() => {
     const stored = readStored();
@@ -53,8 +55,11 @@ export function MockAuthProvider({ children }: { children: ReactNode }) {
         setPreviewClientId(s.profile.role === "admin" ? stored.previewClientId : null);
         setStatus("signed_in");
       })
-      .catch(() => {
+      .catch((reason: unknown) => {
         writeStored(null);
+        if (reason instanceof Error && reason.message === ACCESS_SUSPENDED) {
+          setSessionNotice(ACCESS_SUSPENDED);
+        }
         setStatus("signed_out");
       });
   }, []);
@@ -112,8 +117,19 @@ export function MockAuthProvider({ children }: { children: ReactNode }) {
       requestPasswordReset,
       passwordRecovery: false,
       completePasswordReset: async () => {},
+      sessionNotice,
     }),
-    [status, session, previewClientId, signIn, signInAsDemo, signOut, startPreview, stopPreview],
+    [
+      status,
+      session,
+      previewClientId,
+      signIn,
+      signInAsDemo,
+      signOut,
+      startPreview,
+      stopPreview,
+      sessionNotice,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

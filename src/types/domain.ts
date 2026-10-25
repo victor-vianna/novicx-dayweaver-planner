@@ -9,6 +9,8 @@ export interface Profile {
   id: string;
   role: Role;
   full_name: string;
+  /** Set when the team suspends the account (T1); null or absent = active. */
+  blocked_at?: string | null;
 }
 
 export interface Client {

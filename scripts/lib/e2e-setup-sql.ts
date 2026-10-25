@@ -16,7 +16,9 @@ declare
 begin
   insert into public.clients (id, display_name, business_name, profession, email) values
     ('ee2e0000-0000-4000-8000-0000000000c1', 'E2E A', '[E2E] Cliente A', 'Teste', 'e2e-a@example.com'),
-    ('ee2e0000-0000-4000-8000-0000000000c2', 'E2E B', '[E2E] Cliente B', 'Teste', 'e2e-b@example.com')
+    ('ee2e0000-0000-4000-8000-0000000000c2', 'E2E B', '[E2E] Cliente B', 'Teste', 'e2e-b@example.com'),
+    -- No Auth user: the lifecycle E2E creates it through the admin-users function.
+    ('ee2e0000-0000-4000-8000-0000000000c3', 'E2E Ciclo', '[E2E] Ciclo de vida', 'Teste', 'e2e-life@example.com')
   on conflict (id) do nothing;
 
   insert into auth.users (
@@ -56,7 +58,8 @@ end
 $e2e$;
 select c.email, c.user_id is not null as linked, p.role
   from public.clients c left join public.profiles p on p.id = c.user_id
- where c.id in ('ee2e0000-0000-4000-8000-0000000000c1', 'ee2e0000-0000-4000-8000-0000000000c2')
+ where c.id in ('ee2e0000-0000-4000-8000-0000000000c1', 'ee2e0000-0000-4000-8000-0000000000c2',
+                'ee2e0000-0000-4000-8000-0000000000c3')
 union all
 select u.email, true, p.role from auth.users u join public.profiles p on p.id = u.id
  where u.id = '${ADMIN}';

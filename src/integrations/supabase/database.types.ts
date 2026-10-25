@@ -322,6 +322,7 @@ export type Database = {
       };
       profiles: {
         Row: {
+          blocked_at: string | null;
           created_at: string;
           full_name: string;
           id: string;
@@ -329,6 +330,7 @@ export type Database = {
           updated_at: string;
         };
         Insert: {
+          blocked_at?: string | null;
           created_at?: string;
           full_name?: string;
           id: string;
@@ -336,6 +338,7 @@ export type Database = {
           updated_at?: string;
         };
         Update: {
+          blocked_at?: string | null;
           created_at?: string;
           full_name?: string;
           id?: string;

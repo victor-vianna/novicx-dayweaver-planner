@@ -19,13 +19,13 @@ import { isMockMode } from "@/lib/data-source";
 import { DEMO_LOGIN_PREFILL } from "@/services/auth";
 
 export function LoginScreen() {
-  const { signIn, signInAsDemo, requestPasswordReset } = useAuth();
+  const { signIn, signInAsDemo, requestPasswordReset, sessionNotice } = useAuth();
   // Demo shortcuts and prefilled credentials exist only in mock mode.
   const demo = isMockMode();
   const [email, setEmail] = useState<string>(demo ? DEMO_LOGIN_PREFILL.email : "");
   const [password, setPassword] = useState<string>(demo ? DEMO_LOGIN_PREFILL.password : "");
   const [busy, setBusy] = useState<"form" | "client" | "admin" | "reset" | null>(null);
-  const [error, setError] = useState("");
+  const [error, setError] = useState(sessionNotice ?? "");
   const [notice, setNotice] = useState("");
 
   const forgotPassword = async () => {
