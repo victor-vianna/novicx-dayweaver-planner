@@ -1,0 +1,62 @@
+{
+  "task_id": "E0b",
+  "round": 1,
+  "commit": "814c641",
+  "verdict": "approved",
+  "acceptance": [
+    {
+      "criterion": "Em modo mock o selo aparece com o texto atual.",
+      "status": "verified",
+      "evidence": "States.test.tsx:14-17 cobre o modo mock e confirma o texto exato. A reexecução isolada passou com 2/2 testes."
+    },
+    {
+      "criterion": "Em modo supabase o componente não renderiza nada (DOM vazio).",
+      "status": "verified",
+      "evidence": "States.tsx:74 retorna null quando isMockMode() é falso; data-source.ts:5-11 resolve VITE_DATA_SOURCE=supabase como modo não mock. States.test.tsx:19-23 confirma o DOM vazio."
+    },
+    {
+      "criterion": "Nenhuma outra tela muda; visual do mock idêntico.",
+      "status": "verified",
+      "evidence": "O diff restrito altera somente DemoTag, adicionando a guarda antes do JSX, sem modificar classes, estrutura ou texto renderizados no modo mock. Os três usos existentes permanecem inalterados em AdminWorkspace.tsx:99, ClientWorkspace.tsx:107 e LoginScreen.tsx:209."
+    }
+  ],
+  "checks": [
+    {
+      "command": "git rev-parse HEAD",
+      "result": "pass",
+      "summary": "HEAD confirmado em 814c641959bd434fa1865cd0f919d5667ecd2324, correspondente ao SHA solicitado."
+    },
+    {
+      "command": "git diff --check d82d07fa8a0bdf739b705046fa7c1220a89c4287..814c641 -- src/components/common/States.tsx src/components/common/States.test.tsx docs/orquestracao/tarefas/E0b.md",
+      "result": "pass",
+      "summary": "Nenhum erro de whitespace no diff revisado."
+    },
+    {
+      "command": "npx vitest run --maxWorkers=2 src/components/common/States.test.tsx",
+      "result": "fail",
+      "summary": "A inicialização encontrou spawn EPERM no carregador de configuração, limitação da sandbox prevista pelo JOB; o fallback obrigatório foi executado em seguida."
+    },
+    {
+      "command": "node --import \"data:text/javascript,globalThis.__dirname%3Dprocess.cwd()%3B\" node_modules/vitest/vitest.mjs run --configLoader native --pool=threads --maxWorkers=2 src/components/common/States.test.tsx",
+      "result": "pass",
+      "summary": "1 arquivo e 2 testes passaram."
+    },
+    {
+      "command": "npx tsc --noEmit",
+      "result": "pass",
+      "summary": "TypeScript concluiu sem erros."
+    },
+    {
+      "command": "npm run lint",
+      "result": "pass",
+      "summary": "ESLint concluiu sem erros; apresentou 8 avisos preexistentes fora dos arquivos da tarefa."
+    },
+    {
+      "command": "npm run build",
+      "result": "not_run",
+      "summary": "Não aplicável: o diff restrito não toca configuração de build nem rotas."
+    }
+  ],
+  "findings": [],
+  "summary": "Entrega aprovada: a guarda central em DemoTag elimina o selo no modo Supabase, preserva integralmente sua renderização no modo mock e cobre os três consumidores sem alterações adicionais. Testes direcionados, TypeScript e lint foram validados. Trail economizou aproximadamente 22.244 tokens nesta revisão."
+}
