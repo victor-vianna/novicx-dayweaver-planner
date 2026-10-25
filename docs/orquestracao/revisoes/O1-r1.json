@@ -1,0 +1,115 @@
+{
+  "task_id": "O1",
+  "round": 1,
+  "commit": "0113c6c",
+  "verdict": "changes_requested",
+  "acceptance": [
+    {
+      "criterion": "1. Com --pending, a migration pendente é executada dentro de cada lote.",
+      "status": "verified",
+      "evidence": "db-test-pending.log mostra a sonda 1/1 com --pending, 0/1 sem a flag e 00_schema afetado pela tabela adicional. A injeção ocorre em scripts/db-test-remote.mjs:71-76,94 e scripts/lib/pending.ts:45-52."
+    },
+    {
+      "criterion": "2. Nenhuma alteração da migration pendente fica gravada.",
+      "status": "failed",
+      "evidence": "A evidência nominal mostra listas antes/depois com SHA-256 idêntico e probe:null, mas o reprodutor local demonstrou que assertEmbeddable e assertSingleTransaction aceitam um COMMIT ocultado após comentário de bloco aninhado. Esse COMMIT pode persistir DDL sem alterar schema_migrations, escapando também da comparação final."
+    },
+    {
+      "criterion": "3. O runner falha se a lista aplicada mudar durante a execução.",
+      "status": "verified",
+      "evidence": "scripts/db-test-remote.mjs:112-122 relê a lista, incrementa failed quando difere e encerra com código 1."
+    },
+    {
+      "criterion": "4. Controle de transação/concurrently é recusado, sem falsos positivos em corpos e strings.",
+      "status": "failed",
+      "evidence": "Casos básicos passam nos 27 testes unitários, mas o reprodutor aceitou COMMIT após comentário aninhado. Também rejeitou formas PostgreSQL válidas que deveriam ser ignoradas: escape string E'...' e corpo dollar-quoted com tag $fn1$."
+    },
+    {
+      "criterion": "5. Migration pendente fora de ordem é recusada.",
+      "status": "verified",
+      "evidence": "scripts/lib/pending.ts:18-22 implementa a recusa; pending.test.ts cobre o caso e integrou a execução local de 27/27 testes aprovados."
+    },
+    {
+      "criterion": "6. Sem --pending, o comportamento anterior permanece 74/74.",
+      "status": "not_verifiable",
+      "evidence": "db-test-pending.log contém somente o resultado completo com a sonda e, sem --pending, apenas 99_o1_probe.test.sql 0/1. Não há saída da suíte normal 74/74 sem a sonda."
+    }
+  ],
+  "checks": [
+    {
+      "command": "git rev-parse HEAD",
+      "result": "pass",
+      "summary": "HEAD confirmado como 0113c6c26dd1b9b71335011ca983bc0d68e137f9."
+    },
+    {
+      "command": "npx tsc --noEmit",
+      "result": "pass",
+      "summary": "Concluído com código 0."
+    },
+    {
+      "command": "npm run lint",
+      "result": "pass",
+      "summary": "Código 0; 8 avisos preexistentes de react-refresh e nenhum erro."
+    },
+    {
+      "command": "npx eslint scripts",
+      "result": "pass",
+      "summary": "Concluído com código 0 e sem diagnósticos."
+    },
+    {
+      "command": "npx vitest run --maxWorkers=2 scripts/lib/pending.test.ts scripts/lib/sql-guard.test.ts",
+      "result": "fail",
+      "summary": "A configuração não iniciou devido a spawn EPERM do Vite ao executar net use na sandbox; nenhum teste foi executado nessa tentativa."
+    },
+    {
+      "command": "node --import \"data:text/javascript,globalThis.__dirname%3Dprocess.cwd()%3B\" node_modules/vitest/vitest.mjs run --configLoader native --pool=threads --maxWorkers=2 scripts/lib/pending.test.ts scripts/lib/sql-guard.test.ts",
+      "result": "pass",
+      "summary": "Execução equivalente sem processos fork: 2 arquivos e 27 testes aprovados."
+    },
+    {
+      "command": "node --experimental-strip-types --input-type=module -e \"<reprodutor dos guards com comentário PostgreSQL aninhado>\"",
+      "result": "fail",
+      "summary": "assertEmbeddable e assertSingleTransaction imprimiram ACCEPTED para SQL contendo COMMIT executável após comentário aninhado."
+    },
+    {
+      "command": "git diff --check 404767841fc1d03834b5ab75997c42c817c5249e..0113c6c -- <paths do JOB>",
+      "result": "pass",
+      "summary": "Nenhum erro de whitespace."
+    },
+    {
+      "command": "npm run build",
+      "result": "not_run",
+      "summary": "O diff não altera build nem rotas."
+    },
+    {
+      "command": "npm run db:test:remote / comandos Supabase remotos",
+      "result": "not_run",
+      "summary": "Proibidos para o revisor; foram examinadas somente as evidências fornecidas."
+    }
+  ],
+  "findings": [
+    {
+      "id": "O1-R1-001",
+      "severity": "bloqueante",
+      "file": "scripts/lib/sql-guard.ts",
+      "line": 15,
+      "title": "Comentários de bloco aninhados permitem ocultar um COMMIT executável",
+      "detail": "PostgreSQL aceita comentários /* ... */ aninhados, mas stripSqlLiterals encerra o comentário no primeiro */. Para `create table leaked(id int); /* outer /* inner */ */ commit;`, o scanner deixa `*/ commit` e as regex ancoradas não reconhecem o controle de transação. O reprodutor confirmou que assertEmbeddable e assertSingleTransaction aceitam o texto. Quando injetado após BEGIN, o COMMIT pode persistir a migration e fixtures antes da exceção final; como a versão não é inserida em schema_migrations, a comparação antes/depois ainda pode informar lista inalterada. O mesmo lexer também rejeita indevidamente E-strings com aspas escapadas e tags dollar-quoted contendo dígitos.",
+      "expected_fix": "Implementar análise lexical compatível com PostgreSQL: acompanhar profundidade de comentários de bloco, reconhecer escape strings E'...' e tags dollar-quoted válidas com dígitos. Adicionar regressões para os casos de bypass e de falsos positivos antes de reutilizar o lexer nos dois guards.",
+      "repro_test": "it(\"não deixa comentário aninhado ocultar commit\", () => {\n  const migration = \"create table leaked(id int); /* outer /* inner */ */ commit;\";\n  expect(() => assertEmbeddable(migration)).toThrow(/cannot run/);\n  expect(() => assertSingleTransaction(`begin; ${migration}`)).toThrow(/commit/);\n});",
+      "previous_id": ""
+    },
+    {
+      "id": "O1-R1-002",
+      "severity": "importante",
+      "file": ".orq/evidence/O1/db-test-pending.log",
+      "line": 1,
+      "title": "A evidência não comprova a regressão 74/74 sem --pending",
+      "detail": "O log mostra os quatro arquivos no cenário com sonda, mas a seção sem --pending registra apenas 99_o1_probe.test.sql 0/1. Assim, não há saída concreta demonstrando que os três testes normais continuam 74/74 no caminho legado.",
+      "expected_fix": "Anexar a saída integral de `npm run db:test:remote` sem a sonda e sem --pending, executada pelo coordenador no ambiente remoto autorizado, demonstrando 74/74 e código de saída 0.",
+      "repro_test": "",
+      "previous_id": ""
+    }
+  ],
+  "summary": "Mudanças solicitadas. A injeção, seleção de pendências e comparação da lista aplicada estão implementadas, e os 27 testes locais existentes passam. Porém, o lexer permite que um COMMIT executável escape dos dois guards por meio de comentário aninhado, quebrando a garantia central de rollback. Também falta evidência remota do baseline 74/74 sem --pending."
+}

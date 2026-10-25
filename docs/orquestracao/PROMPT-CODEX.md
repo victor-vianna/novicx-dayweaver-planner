@@ -47,6 +47,8 @@ Objetivo: decidir, com evidência, se a entrega cumpre o brief sem defeitos.
 3. Reexecute você mesmo, neste worktree (sem rede), o que for aplicável:
    `npx tsc --noEmit`, `npm run lint`, `npx vitest run --maxWorkers=2 <arquivos afetados>`
    e `npm run build` quando o diff tocar build/rotas. Registre cada um em `checks`.
+   Se o vitest falhar com `spawn EPERM` (sandbox), use
+   `node --import "data:text/javascript,globalThis.__dirname%3Dprocess.cwd()%3B" node_modules/vitest/vitest.mjs run --configLoader native --pool=threads --maxWorkers=2 <arquivos>`.
    Não rode `db:test:remote`, `test:supabase:remote`, `supabase db push`/`deploy`
    ou qualquer comando contra o banco remoto: use as evidências do coordenador e
    aponte o que faltar.
