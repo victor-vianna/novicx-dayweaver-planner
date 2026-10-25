@@ -3,6 +3,7 @@
     "src/**/*.ts",
     "src/**/*.tsx",
     "scripts/**/*.ts",
+    "supabase/functions/admin-users/handler*.ts",
     "vite.config.ts",
     "vitest.config.ts",
     "eslint.config.js"

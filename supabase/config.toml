@@ -374,7 +374,8 @@ authorization_url_path = "/oauth/consent"
 allow_dynamic_registration = false
 
 [edge_runtime]
-# No Edge Functions in the MVP.
+# Local runtime off (no Docker here); the only function, admin-users, is
+# deployed to the dev project with --use-api.
 enabled = false
 # Supported request policies: `oneshot`, `per_worker`.
 # `per_worker` (default) — enables hot reload during local development.
@@ -415,3 +416,8 @@ enabled = true
 # formatted with uppercase keywords, indent 2, max width 180, trailing commas,
 # and column/key alignment. Set to "null" to emit raw, unformatted SQL.
 # format_options = "{\"keywordCase\":\"upper\",\"indent\":2,\"maxWidth\":180,\"commaStyle\":\"trailing\"}"
+
+[functions.admin-users]
+# The handler validates the caller with Auth (getUser) and requires an active
+# admin itself, so it works with legacy or asymmetric JWT signing keys.
+verify_jwt = false
