@@ -1,0 +1,110 @@
+{
+  "task_id": "T5",
+  "round": 1,
+  "commit": "5ffad9173e53ee40f991d9406e445ad750f3ee5a",
+  "verdict": "changes_requested",
+  "acceptance": [
+    {
+      "criterion": "1. Migration nova; único drop é o da função antiga; sem alteração de dados.",
+      "status": "verified",
+      "evidence": "supabase/migrations/20261025210000_assign_plan_idempotent.sql:9-12 adiciona coluna/índice e remove somente a assinatura antiga; não há DML destrutivo. git diff --check passou."
+    },
+    {
+      "criterion": "2. Mesmo request_id produz o mesmo pacote, sem duplicar pacote/slots nem encerrar o pacote repetido.",
+      "status": "verified",
+      "evidence": "A migration consulta request_id antes de encerrar o pacote ativo (linhas 42-50). 05_assign_plan.test.sql:35-48 cobre identidade, pacote único, dois slots e status active; db-test.log registra 14/14 com migrations pendentes."
+    },
+    {
+      "criterion": "3. Reutilização para outra cliente/plano e request_id nulo retornam 22023; cliente comum retorna 42501.",
+      "status": "verified",
+      "evidence": "05_assign_plan.test.sql:50-68 cobre outra cliente, outro plano, nulo e ator cliente. 01_rls e 03_blocked também cobrem cliente comum e admin bloqueado; db-test.log registra 47/47, 30/30 e 14/14 com --pending."
+    },
+    {
+      "criterion": "4. Alterar o catálogo não modifica snapshots, quantidade nem slots contratados.",
+      "status": "verified",
+      "evidence": "05_assign_plan.test.sql:56-62 altera nome, quantidade e período e confirma snapshot/quantidade e dois slots preservados. O teste pgTAP passou 14/14; packages.test.ts também cobre snapshots no mock."
+    },
+    {
+      "criterion": "5. Tela de Planos cria, edita e pausa nos dois modos, com validação anunciada e sem salvar dados inválidos.",
+      "status": "verified",
+      "evidence": "PlansView.tsx:22-279 usa o facade de planos, implementa criação/edição/pausa, ordenação e layout responsivo; plan-form.ts:37-64 aplica as validações. PlansView.test.tsx cobre criação, role=alert sem persistência e pausa. A execução direcionada passou: 3 arquivos e 15 testes."
+    },
+    {
+      "criterion": "6. pgTAP falha sem a migration e passa com --pending; npm test e build verdes.",
+      "status": "verified",
+      "evidence": "db-test.log mostra falha esperada sem pendentes e sucesso completo com --pending (19/47/13/30/9/14). npm-test.log registra 31 arquivos e 213/213 testes. build.log registra build concluído. Nesta sandbox, tsc e lint passaram e os testes direcionados passaram pelo carregador alternativo; o build local foi impedido por spawn EPERM, enquanto a evidência do coordenador confirma o build verde."
+    }
+  ],
+  "checks": [
+    {
+      "command": "git rev-parse HEAD",
+      "result": "pass",
+      "summary": "HEAD confirmado em 5ffad9173e53ee40f991d9406e445ad750f3ee5a."
+    },
+    {
+      "command": "npx tsc --noEmit",
+      "result": "pass",
+      "summary": "TypeScript concluído sem erros."
+    },
+    {
+      "command": "npm run lint",
+      "result": "pass",
+      "summary": "Sem erros; oito avisos preexistentes de react-refresh fora da faixa do T5."
+    },
+    {
+      "command": "npx vitest run --maxWorkers=2 src/features/admin/plans/PlansView.test.tsx src/features/admin/plans/plan-form.test.ts src/services/packages.test.ts",
+      "result": "fail",
+      "summary": "Carregamento inicial bloqueado pela sandbox com spawn EPERM."
+    },
+    {
+      "command": "node --import \"data:text/javascript,globalThis.__dirname%3Dprocess.cwd()%3B\" node_modules/vitest/vitest.mjs run --configLoader native --pool=threads --maxWorkers=2 src/features/admin/plans/PlansView.test.tsx src/features/admin/plans/plan-form.test.ts src/services/packages.test.ts",
+      "result": "pass",
+      "summary": "3 arquivos e 15 testes passaram."
+    },
+    {
+      "command": "npm run build",
+      "result": "fail",
+      "summary": "A sandbox bloqueou subprocessos com spawn EPERM; também impediu o carregamento do binário nativo do Tailwind. A evidência build.log do coordenador mostra o mesmo commit construído com sucesso."
+    },
+    {
+      "command": "Get-Content .orq/evidence/T5/db-test.log, npm-test.log, build.log",
+      "result": "pass",
+      "summary": "Evidências registram pgTAP verde com --pending, 213/213 testes e build concluído."
+    },
+    {
+      "command": "git diff --check cc7487020678485e5f1cdb1c5cc42348f7409b8d..5ffad91 -- <paths do JOB>",
+      "result": "pass",
+      "summary": "Nenhum erro de whitespace no diff restrito."
+    },
+    {
+      "command": "git status --short",
+      "result": "pass",
+      "summary": "Worktree permaneceu limpo após a revisão."
+    }
+  ],
+  "findings": [
+    {
+      "id": "T5-001",
+      "severity": "importante",
+      "file": "src/services/mock/packages.ts",
+      "line": 66,
+      "title": "Mock aceita o mesmo requestId com outra data de início",
+      "detail": "A implementação Supabase recusa a reutilização quando start_date difere, mas o mock compara somente client_id e plan_id. Assim, no modo demonstração, repetir o requestId com a mesma cliente/plano e uma nova startDate devolve silenciosamente o pacote antigo. Isso quebra a equivalência entre os modos e a semântica declarada para a chave idempotente.",
+      "expected_fix": "Incluir previous.start_date !== startDate na validação de conflito do mock e adicionar um teste que exija rejeição para a reutilização com outra data.",
+      "repro_test": "it(\"refuses a request id reused for another start date\", async () => {\n  await assignPlan(input(\"r-date\"));\n  await expect(assignPlan({ ...input(\"r-date\"), startDate: \"2026-12-01\" }))\n    .rejects.toThrow(/já usado/);\n});",
+      "previous_id": ""
+    },
+    {
+      "id": "T5-002",
+      "severity": "importante",
+      "file": "supabase/tests/01_rls.test.sql",
+      "line": 166,
+      "title": "A nova assinatura da RPC não possui teste de negação para anon",
+      "detail": "O bloco anon testa apenas set_post_published. Embora a migration revogue EXECUTE corretamente hoje, a suíte não chama assign_plan(uuid,uuid,date,jsonb,uuid) como anon; portanto, uma regressão de grant nessa RPC crítica passaria despercebida. O protocolo de revisão exige caso pgTAP negado para cada RPC nova.",
+      "expected_fix": "Adicionar no bloco anon um throws_ok para a assinatura de cinco argumentos de assign_plan, esperando 42501, e ajustar o plan do arquivo. Idealmente, também afirmar has_function_privilege para anon/public e authenticated.",
+      "repro_test": "select throws_ok($$select public.assign_plan(\n  'aaaaaaaa-0000-4000-8000-00000000000c',\n  'eeeeeeee-0000-4000-8000-000000000001',\n  '2026-11-02', '[]', gen_random_uuid())$$,\n  '42501', null, 'anon não executa assign_plan');",
+      "previous_id": ""
+    }
+  ],
+  "summary": "A implementação central está correta e as evidências confirmam idempotência, snapshots, UI e suíte verde. Solicito mudanças por duas lacunas importantes: divergência funcional do mock para startDate e ausência do caso pgTAP de anon para a nova RPC. O build executado nesta sandbox foi bloqueado por EPERM, mas o log do coordenador comprova build bem-sucedido. 🌱 trail saved ~32,441 tokens this turn. 📝 Started from Victor's Supabase integration learning · saved ~427,860 tokens and ~43 min."
+}
