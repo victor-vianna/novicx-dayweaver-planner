@@ -1,5 +1,28 @@
 # Entrega Codex — Ciclo 1
 
+## X2 — A11y do menu mobile
+
+- **Branch:** `codex/ciclo-3`
+- **Commits:** nenhum; o coordenador fará o commit do diff entregue.
+- **Mudanças:** o acionador do menu agora informa nome, estado e painel controlado
+  por `aria-label`, `aria-expanded` e `aria-controls`. Até o breakpoint desktop,
+  o painel fechado recebe `inert` e `aria-hidden`; ao abrir, recebe foco. `Esc`,
+  o botão interno, o backdrop e a navegação fecham o painel, com restauração do
+  foco para o acionador. As classes responsivas e o comportamento desktop foram
+  preservados.
+- **Testes:** `AppFrame.test.tsx` cobre os atributos ARIA, isolamento do painel
+  fechado, foco ao abrir, fechamento/restauração de foco por `Esc`, a faixa entre
+  768 e 1023 px e a disponibilidade da barra lateral no desktop.
+- **Verificações:** o comando Vitest solicitado encontrou `spawn EPERM` ao
+  carregar a configuração; o fallback com `--configLoader native` passou com 1
+  arquivo e 3 testes. `npx tsc --noEmit` e `npm run lint` passaram; o lint manteve
+  apenas 8 avisos preexistentes de Fast Refresh, sem erros.
+- **Limitações:** o Vitest sem o fallback não pôde iniciar por restrição de
+  subprocesso da sandbox. Nenhum teste visual foi exigido para esta tarefa.
+- **Revisão do Claude:** confirmar o pareamento do breakpoint `lg` com a media
+  query de 64 rem e o fluxo de foco do menu em navegador real; criar o commit da
+  entrega sem incluir o cache local não versionado do Trail.
+
 ## X1 — `maxWorkers` do Vitest
 
 - **Branch:** `codex/ciclo-3`
