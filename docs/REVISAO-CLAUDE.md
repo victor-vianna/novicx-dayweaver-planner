@@ -1,5 +1,14 @@
 # Revisão Claude — Ciclo 3
 
+## X8 — Build para a Vercel (`7d179cf`, `codex/ciclo-3`)
+
+- **Data:** 2026-10-25 · **Veredito:** aprovado, sem bloqueantes nem importantes.
+- **Diff:** `vite.config.ts` ganha `nitro: { preset: "vercel" }`; `vercel.json` só com `framework: null` e `buildCommand`.
+- **Lovable:** conferido no código do wrapper (`@lovable.dev/vite-tanstack-config`, `dist/index.js` ~L1187–1203): no ambiente Lovable (`isSandbox`) o preset é forçado para `cloudflare-module` com os diretórios de publicação dele, então a escolha `vercel` só vale fora do Lovable.
+- **Verificação do revisor:** `npm run build` mock e `VITE_DATA_SOURCE=supabase` exit 0; `.vercel/output` com `config.json` (v3, rota `/(.*)` → `/__server`), `functions/__server.func` (Node 24, streaming) e `static/`; função SSR executada localmente: `/` 200, rota inexistente 404 com a página em pt-BR (`.orq/evidence/X8/`).
+- **Fora da faixa (feito pelo coordenador):** `.vercel/` no `.gitignore`.
+- **Melhoria opcional:** o build local agora gera `.vercel/output` em vez de `.output`; scripts de preview que dependam de `.output` precisariam de ajuste (nenhum hoje).
+
 ## X3 — 404 e erro em pt-BR (`61f31d1`, `codex/ciclo-3`)
 
 - **Data:** 2026-10-25 · **Veredito:** aprovado, sem itens.
