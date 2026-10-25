@@ -92,7 +92,7 @@ describe.skipIf(!REMOTE)("account lifecycle (remote dev)", () => {
     expect(await own()).toEqual([LIFE_CLIENT]);
 
     await accounts.setAccessBlocked(userId, true);
-    expect((await accounts.getAccess(client!)).status).toBe("blocked");
+    expect((await accounts.getAccess({ user_id: userId })).status).toBe("blocked");
     // The access token is still valid, but RLS already denies everything.
     expect(await own()).toEqual([]);
     expect((await user.auth.refreshSession()).error).not.toBeNull();
