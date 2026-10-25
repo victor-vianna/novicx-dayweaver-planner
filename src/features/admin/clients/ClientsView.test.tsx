@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getDB, resetDB } from "@/mocks/store";
 import * as accounts from "@/services/accounts";
 import * as clientsService from "@/services/clients";
+import * as mockAccounts from "@/services/mock/accounts";
 
 import { ClientsView } from "./ClientsView";
 
@@ -21,7 +22,18 @@ vi.mock("@/services/clients", async (importOriginal) => {
 });
 vi.mock("@/services/accounts", async (importOriginal) => {
   const mod = await importOriginal<typeof import("@/services/accounts")>();
-  return { ...mod, changeClientEmail: vi.fn(mod.changeClientEmail) };
+  return {
+    ...mod,
+    changeClientEmail: vi.fn(mod.changeClientEmail),
+    createAccess: vi.fn(mod.createAccess),
+    resetAccess: vi.fn(mod.resetAccess),
+  };
+});
+
+/** Supabase can create the account and still return an empty link. */
+const createWithoutLink = async (clientId: string) => ({
+  ...(await mockAccounts.createAccess(clientId)),
+  link: "",
 });
 
 const onOpenDelivery = vi.fn();
@@ -230,6 +242,49 @@ describe("ClientsView", () => {
       expect(JSON.stringify(spy.mock.calls)).not.toContain(link);
       spy.mockRestore();
     }
+  });
+
+  it("asks for a new link when createAccess returns an empty one", async () => {
+    const { toast } = await import("sonner");
+    vi.mocked(accounts.createAccess).mockImplementationOnce(createWithoutLink);
+    getDB().clients.find((c) => c.id === "c-camila")!.user_id = "";
+    renderView();
+    await openSheet("Camila Reis Consultoria");
+    const access = screen.getByRole("region", { name: "Acesso ao portal" });
+    fireEvent.click(await within(access).findByRole("button", { name: "Criar acesso" }));
+
+    const input = await within(access).findByLabelText("Link de acesso");
+    const userId = getDB().clients.find((c) => c.id === "c-camila")!.user_id;
+    expect(userId).not.toBe("");
+    expect(accounts.resetAccess).toHaveBeenCalledWith(userId);
+    expect((input as HTMLInputElement).value).toMatch(/^https:\/\//);
+    expect(await within(access).findByText("Ativo")).toBeInTheDocument();
+    expect(within(access).queryByRole("alert")).toBeNull();
+    expect(toast.success).toHaveBeenCalledWith("Acesso criado.");
+  });
+
+  it("explains when the account exists but no link could be generated", async () => {
+    const { toast } = await import("sonner");
+    vi.mocked(accounts.createAccess).mockImplementationOnce(createWithoutLink);
+    vi.mocked(accounts.resetAccess).mockRejectedValueOnce(new Error("falhou"));
+    getDB().clients.find((c) => c.id === "c-camila")!.user_id = "";
+    renderView();
+    await openSheet("Camila Reis Consultoria");
+    const access = screen.getByRole("region", { name: "Acesso ao portal" });
+    fireEvent.click(await within(access).findByRole("button", { name: "Criar acesso" }));
+
+    expect(await within(access).findByRole("alert")).toHaveTextContent(
+      "Acesso criado, mas o link não foi gerado. Use “Gerar novo link”.",
+    );
+    expect(await within(access).findByText("Ativo")).toBeInTheDocument();
+    expect(within(access).getByRole("button", { name: "Gerar novo link" })).toBeEnabled();
+    expect(within(access).queryByLabelText("Link de acesso")).toBeNull();
+    expect(toast.success).not.toHaveBeenCalledWith("Acesso criado.");
+
+    // The action recovers: a new link replaces the warning.
+    fireEvent.click(within(access).getByRole("button", { name: "Gerar novo link" }));
+    expect(await within(access).findByLabelText("Link de acesso")).toBeInTheDocument();
+    expect(within(access).queryByRole("alert")).toBeNull();
   });
 
   it("falls back to selecting the link when the clipboard fails", async () => {

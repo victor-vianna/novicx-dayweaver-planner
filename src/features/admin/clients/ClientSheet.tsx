@@ -148,18 +148,33 @@ function AccessLink({ link, onClose }: { link: string; onClose: () => void }) {
 function AccessSection({ client }: { client: Client }) {
   const accessQuery = useQuery(adminAccessQuery(client));
   const [link, setLink] = useState<string | null>(null);
-  // Mutations return nothing: the link must not sit in the mutation cache.
-  const create = useClientMutation(async () => {
-    const { link: next } = await createAccess(client.id);
-    setLink(next);
-  }, "Acesso criado.");
+  // Account created but no link (Supabase may return an empty one).
+  const [linkMissing, setLinkMissing] = useState(false);
+  // Mutations never return the link: it must not sit in the mutation cache.
+  const create = useClientMutation(async (): Promise<boolean> => {
+    const { userId, link: first } = await createAccess(client.id);
+    let next = first;
+    if (!next) {
+      // The account already exists: a failure here must not hide that.
+      next = await resetAccess(userId).catch(() => "");
+    }
+    setLink(next || null);
+    setLinkMissing(!next);
+    return !!next;
+  });
   const reset = useClientMutation(async (userId: string) => {
-    setLink(await resetAccess(userId));
+    const next = await resetAccess(userId);
+    if (!next) throw new Error("Não foi possível gerar o link. Tente novamente.");
+    setLink(next);
+    setLinkMissing(false);
   }, "Novo link gerado.");
   const block = useClientMutation(
     async ({ userId, blocked }: { userId: string; blocked: boolean }) => {
       await setAccessBlocked(userId, blocked);
-      if (blocked) setLink(null);
+      if (blocked) {
+        setLink(null);
+        setLinkMissing(false);
+      }
     },
   );
 
@@ -200,7 +215,16 @@ function AccessSection({ client }: { client: Client }) {
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
             {access.status === "none" && (
-              <Button onClick={() => create.mutate(undefined)} disabled={busy}>
+              <Button
+                onClick={() =>
+                  create.mutate(undefined, {
+                    onSuccess: (linked) => {
+                      if (linked) toast.success("Acesso criado.");
+                    },
+                  })
+                }
+                disabled={busy}
+              >
                 <KeyRound />
                 Criar acesso
               </Button>
@@ -254,6 +278,11 @@ function AccessSection({ client }: { client: Client }) {
               />
             )}
           </div>
+          {linkMissing && access.status === "active" && (
+            <p role="alert" className="mt-4 text-sm text-destructive">
+              Acesso criado, mas o link não foi gerado. Use “Gerar novo link”.
+            </p>
+          )}
           {link && <AccessLink link={link} onClose={() => setLink(null)} />}
         </>
       )}
