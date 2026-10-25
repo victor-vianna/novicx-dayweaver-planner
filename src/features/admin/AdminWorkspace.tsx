@@ -8,6 +8,7 @@ import { WorkspaceSkeleton } from "@/components/common/WorkspaceStates";
 import { AppFrame } from "@/components/layout/AppFrame";
 import { PostListItem } from "@/components/post/PostListItem";
 import { ClientCard } from "@/features/admin/ClientCard";
+import { ClientsView } from "@/features/admin/clients/ClientsView";
 import { ClientDelivery } from "@/features/admin/delivery/ClientDelivery";
 import { PlansView } from "@/features/admin/plans/PlansView";
 import {
@@ -154,28 +155,10 @@ export function AdminWorkspace() {
           </div>
         </div>
       ) : (
-        <div className="page-enter">
-          <header className="mb-7">
-            <p className="text-sm font-medium text-primary-glow">Relacionamento</p>
-            <h1 className="mt-1 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
-              Clientes
-            </h1>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Abra uma cliente para enviar artes, ajustar datas e liberar publicações.
-            </p>
-          </header>
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {clients.map((client) => (
-              <ClientCard
-                key={client.id}
-                client={client}
-                pkg={packages.find((item) => item.client_id === client.id)}
-                expanded
-                onPreview={() => setDeliveryClientId(client.id)}
-              />
-            ))}
-          </div>
-        </div>
+        <ClientsView
+          onOpenDelivery={(id) => setDeliveryClientId(id)}
+          onPreview={(id) => startPreview(id)}
+        />
       )}
     </AppFrame>
   );
