@@ -1,5 +1,12 @@
 # Revisão Claude — Ciclo 3
 
+## X2 — A11y do menu mobile (`021eb75`, `codex/ciclo-3`)
+
+- **Data:** 2026-10-25 · **Veredito:** aprovado, sem bloqueantes nem importantes.
+- **Diff:** botão com `aria-label` dinâmico, `aria-expanded` e `aria-controls`; painel `inert` + `aria-hidden` só abaixo de `lg` (media query 64rem = 1024 px, o mesmo breakpoint das classes `lg:`); foco vai ao painel ao abrir e volta ao botão ao fechar (Esc, backdrop, botão interno, navegação). Desktop inalterado. React 19.3 aceita `inert` booleano.
+- **Verificação do revisor:** `npx vitest run src/components/layout` 3/3; `tsc` e `eslint` sem erros.
+- **Melhoria opcional:** até o primeiro efeito (SSR/primeira pintura no celular) o painel fechado ainda não está `inert`; está fora da tela, então o impacto é mínimo.
+
 ## X1 — `maxWorkers` do Vitest (`c15cee8`, `codex/ciclo-3`)
 
 - **Data:** 2026-10-25 · **Veredito:** aprovado, sem itens.
