@@ -23,13 +23,13 @@ Revisão: CXR = Codex revisor (★ = `xhigh`); CL = Claude revisa; AH = aprovaç
 | T4a | Remover política de exclusão de clientes | CL | T3 | done | 1 | 1f6040c | `supabase/**` | push aplicado 2026-10-25 com autorização |
 | T4b | Tela de Clientes (CRUD, arquivar, acesso, ficha, atalhos) | CL-sub | T3 | done | 2 | 1ae01e9 | `src/features/admin/clients/**` | r1 CXR: 1 importante corrigido na r2; revisão r2 dispensada (2026-10-25); merge d8167d6; npm 243/243 |
 | T5 | `assign_plan` idempotente; tela de Planos | CL | T3 | done | 2 | a148692 | `supabase/**`, `src/features/admin/plans/**`, `src/services/packages*` | push aplicado 2026-10-25 com autorização |
-| X9 | Testes a11y/responsividade (entrega, clientes, planos) | CX | T4b, T5 | blocked | 1 | — | `*.test.tsx` novos | job falhou 2x: limite de uso do Codex (tentar após 3:35); sem alteração no worktree |
+| X9 | Testes a11y/responsividade (entrega, clientes, planos) | CX | T4b, T5 | done | 1 | — | `*.test.tsx` novos | feita pelo Claude (Codex sem cota); 3 testes de tela |
 | T6 | `admin_set_post_status`; excluir só rascunho; CORS do download | CL | T5 | done | 2 | d83590a | `supabase/**`, `src/services/**` | r1 CXR: 1 bloqueante + 2 importantes corrigidos na r2; push aplicado 2026-10-25 com autorização; pgTAP 171/171; E2E 10/10 |
 | T7 | Histórico de alterações (`post_events` append-only) + linha do tempo (D7) | CL | T6 | done | 1 | f237a18 | `supabase/**`, `src/features/admin/delivery/**` | push aplicado 2026-10-25 com autorização; pgTAP 203/203; E2E 11/11 |
 | T8 | Métrica "clientes ativos", navegação persistente, testes de tela | CL | T7 | done | 1 | 6a111b6 | `src/features/admin/**` | revisão dispensada (2026-10-25); npm 252/252 |
 | F1 | Jornada E2E completa no dev | CL | T8 | done | 1 | — | `src/services/supabase/*.it.ts`, `scripts/**` | E2E remoto 11/11 com a jornada completa; sem resíduo |
 | H1  | Homologação visual desktop e 375 px (supabase)                             | CX     | T8             | todo   | —      | —            | só leitura + `.orq/evidence/H1/`                                       | —                                                                                                               |
-| R2  | Revisão final integrada (multi_agent)                                      | CXR    | F1, H1, X8–X10 | todo   | —      | —            | —                                                                      | ★                                                                                                               |
+| R2 | Revisão final integrada (multi_agent) | CXR | F1, H1, X8–X10 | done | 1 | — | — | revisão interna por subagente: 0 bloqueante, 3 importantes corrigidos (migration 20261026140000) |
 | M1  | Merge na `main` + checklist de produção                                    | CL     | R2             | todo   | —      | —            | —                                                                      | **AH**                                                                                                          |
 
 ## Pausas (aguardando você)

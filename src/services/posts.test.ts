@@ -140,6 +140,15 @@ describe("post service authorization", () => {
       expect(again.title).toBe("Novo título");
     });
 
+    it("keeps the original record when an already published post is confirmed again", async () => {
+      const first = await settle(markPostPublished("p-m-3", { role: "admin" }));
+      const again = await settle(
+        markPostPublished("p-m-3", { role: "client", clientId: "c-marina" }),
+      );
+      expect(again.published_by).toBe("admin");
+      expect(again.published_at).toBe(first.published_at);
+    });
+
     it("deletes only drafts, with their arts", async () => {
       const draft = draftWithArt();
       const ready = getDB().posts.find((p) => p.status !== "draft")!;

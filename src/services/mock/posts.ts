@@ -119,11 +119,13 @@ export async function markPostPublished(id: string, actor: Actor): Promise<PostW
   await delay(260);
   const post = postForActor(id, actor);
   if (post.status === "draft") throw new Error("Esta publicação ainda não está disponível");
+  // Already published: keep the original record (like set_post_published).
+  if (post.status === "published") return clone(withMedia(post));
   const from = post.status;
   post.status = "published";
   post.published_at = new Date().toISOString();
   post.published_by = actor.role;
-  if (from !== post.status) statusEvent(post, from, actor);
+  statusEvent(post, from, actor);
   commit();
   return clone(withMedia(post));
 }
