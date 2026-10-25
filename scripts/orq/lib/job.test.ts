@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -22,6 +22,7 @@ import {
   type JobDeps,
   type JobLayout,
 } from "./job.ts";
+import { nodeLockFs } from "./node-fs.ts";
 import type { JsonSchema } from "./schema.ts";
 
 const reviewSchema = JSON.parse(
@@ -29,6 +30,8 @@ const reviewSchema = JSON.parse(
 ) as JsonSchema;
 const taskSchemaText = readFileSync("docs/orquestracao/task-schema.json", "utf8");
 const SHA = "0123456789abcdef0123456789abcdef01234567";
+const mod = pathToFileURL(path.resolve("scripts/orq/lib/job.ts")).href;
+const fsMod = pathToFileURL(path.resolve("scripts/orq/lib/node-fs.ts")).href;
 const BASE = "924c26e8b65d4500a1e26e47e824f1fa5b38660e";
 
 const review = (over: Record<string, unknown> = {}) => ({
@@ -52,6 +55,7 @@ const args = (over: Partial<JobArgs> = {}): JobArgs => ({
   resume: false,
   multiAgent: false,
   base: "924c26e",
+  paths: [],
   ...over,
 });
 
@@ -101,6 +105,30 @@ describe("parseArgs base", () => {
     expect(() => parseArgs(review)).toThrow(/--base/);
     expect(() => parseArgs([...review, "--base", "claude/ciclo-3"])).toThrow(/SHA/);
     expect(parseArgs([...review, "--base", "924c26e"]).base).toBe("924c26e");
+  });
+});
+
+describe("parseArgs paths", () => {
+  const review = [
+    "--kind",
+    "review",
+    "--task",
+    "T1",
+    "--round",
+    "1",
+    "--sha",
+    "abc1234",
+    "--base",
+    "924c26e",
+  ];
+  it("parses a comma list and puts it in the JOB", () => {
+    expect(
+      parseArgs([...review, "--paths", "supabase/migrations/x.sql, supabase/tests/y.sql"]).paths,
+    ).toEqual(["supabase/migrations/x.sql", "supabase/tests/y.sql"]);
+  });
+  it("rejects option-like or escaping entries", () => {
+    expect(() => parseArgs([...review, "--paths", "--output=x"])).toThrow(/paths/);
+    expect(() => parseArgs([...review, "--paths", "../x"])).toThrow(/paths/);
   });
 });
 
@@ -422,47 +450,15 @@ describe("runJob base and lock ownership", () => {
 });
 
 describe("acquireLock / releaseLock on the real filesystem", () => {
-  const realFs = {
-    createExclusive: (f: string, d: string) => {
-      try {
-        writeFileSync(f, d, { flag: "wx" });
-        return true;
-      } catch {
-        return false;
-      }
-    },
-    read: (f: string) => {
-      try {
-        return readFileSync(f, "utf8");
-      } catch {
-        return null;
-      }
-    },
-    remove: (f: string) => rmSync(f, { force: true }),
-    mkdirExclusive: (d: string) => {
-      try {
-        mkdirSync(d);
-        return true;
-      } catch {
-        return false;
-      }
-    },
-    rmdir: (d: string) => rmSync(d, { recursive: true, force: true }),
-  };
+  const realFs = nodeLockFs; // the production adapter
 
   it("lets exactly one of several concurrent processes acquire the lock", async () => {
     const dir = mkdtempSync(path.join(tmpdir(), "orq-lock-"));
     const lock = path.join(dir, "codex.lock");
-    const mod = pathToFileURL(path.resolve("scripts/orq/lib/job.ts")).href;
     const code = [
-      `import { writeFileSync, readFileSync } from "node:fs";`,
       `import { acquireLock } from ${JSON.stringify(mod)};`,
-      `const fs = {`,
-      `  createExclusive: (f, d) => { try { writeFileSync(f, d, { flag: "wx" }); return true; } catch { return false; } },`,
-      `  read: (f) => { try { return readFileSync(f, "utf8"); } catch { return null; } },`,
-      `  remove: () => {},`,
-      `};`,
-      `console.log(acquireLock(fs, ${JSON.stringify(lock)}, process.pid, () => true));`,
+      `import { nodeLockFs } from ${JSON.stringify(fsMod)};`,
+      `console.log(acquireLock(nodeLockFs, ${JSON.stringify(lock)}, process.pid, () => true));`,
     ].join("\n");
     const run = () =>
       new Promise<string>((resolve, reject) =>
@@ -475,6 +471,16 @@ describe("acquireLock / releaseLock on the real filesystem", () => {
     expect(readFileSync(lock, "utf8")).toMatch(/^\d+$/);
     rmSync(dir, { recursive: true, force: true });
   }, 30_000);
+
+  it("recovers a dead lock with the production adapter, leaving no takeover marker", () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "orq-lock-"));
+    const lock = path.join(dir, "codex.lock");
+    writeFileSync(lock, "999999");
+    expect(() => acquireLock(nodeLockFs, lock, 1001, () => false)).not.toThrow();
+    expect(readFileSync(lock, "utf8")).toBe("1001");
+    expect(readdirSync(dir)).toEqual(["codex.lock"]);
+    rmSync(dir, { recursive: true, force: true });
+  });
 
   it("replaces a stale lock and releases only its own", () => {
     const dir = mkdtempSync(path.join(tmpdir(), "orq-lock-"));
@@ -526,19 +532,10 @@ describe("stale lock takeover race (O0-B1-R2)", () => {
     const dir = mkdtempSync(path.join(tmpdir(), "orq-lock-"));
     const lock = path.join(dir, "codex.lock");
     writeFileSync(lock, "999999");
-    const mod = pathToFileURL(path.resolve("scripts/orq/lib/job.ts")).href;
     const code = [
-      `import { mkdirSync, readFileSync, rmSync, rmdirSync, writeFileSync } from "node:fs";`,
       `import { acquireLock } from ${JSON.stringify(mod)};`,
-      `const tryIt = (fn) => { try { fn(); return true; } catch { return false; } };`,
-      `const fs = {`,
-      `  createExclusive: (f, d) => tryIt(() => writeFileSync(f, d, { flag: "wx" })),`,
-      `  read: (f) => { try { return readFileSync(f, "utf8"); } catch { return null; } },`,
-      `  remove: (f) => rmSync(f, { force: true }),`,
-      `  mkdirExclusive: (d) => tryIt(() => mkdirSync(d)),`,
-      `  rmdir: (d) => tryIt(() => rmdirSync(d)),`,
-      `};`,
-      `console.log(acquireLock(fs, ${JSON.stringify(lock)}, process.pid, (p) => p !== 999999));`,
+      `import { nodeLockFs } from ${JSON.stringify(fsMod)};`,
+      `console.log(acquireLock(nodeLockFs, ${JSON.stringify(lock)}, process.pid, (p) => p !== 999999));`,
     ].join("\n");
     const run = () =>
       new Promise<string>((resolve, reject) =>

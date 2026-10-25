@@ -6,11 +6,12 @@
 // Codex is spawned as `node <codex.js>` with execFile (no shell: the path has
 // spaces and accents). Override the entry point with CODEX_JS if needed.
 import { execFile } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
 import { parseArgs, runJob } from "./lib/job.ts";
+import { nodeLockFs } from "./lib/node-fs.ts";
 
 const root = process.cwd();
 if (!existsSync(path.join(root, "docs/orquestracao/ORQUESTRACAO.md"))) {
@@ -101,31 +102,10 @@ const deps = {
     }
   },
   pid: process.pid,
-  read: (file) => (existsSync(file) ? readFileSync(file, "utf8") : null),
+  ...nodeLockFs, // read, remove, createExclusive, mkdirExclusive, rmdir
   write: (file, data) => {
     mkdirSync(path.dirname(file), { recursive: true });
     writeFileSync(file, data);
-  },
-  remove: (file) => rmSync(file, { force: true }),
-  mkdirExclusive: (dir) => {
-    try {
-      mkdirSync(dir);
-      return true;
-    } catch (err) {
-      if (err.code === "EEXIST") return false;
-      throw err;
-    }
-  },
-  rmdir: (dir) => rmSync(dir, { recursive: false, force: true }),
-  createExclusive: (file, data) => {
-    mkdirSync(path.dirname(file), { recursive: true });
-    try {
-      writeFileSync(file, data, { flag: "wx" });
-      return true;
-    } catch (err) {
-      if (err.code === "EEXIST") return false;
-      throw err;
-    }
   },
   git: async (cwd, argv) => (await run("git", ["-C", cwd, ...argv])).stdout,
   codex: (argv, opts) => run(process.execPath, [codexJs, ...argv], opts),

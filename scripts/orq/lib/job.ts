@@ -22,6 +22,8 @@ export interface JobArgs {
   multiAgent: boolean;
   /** Immutable base commit for the diff (required for reviews). */
   base: string;
+  /** Files of the task; the reviewer diffs only these (other commits may interleave). */
+  paths: string[];
 }
 
 export function parseArgs(argv: string[]): JobArgs {
@@ -56,7 +58,22 @@ export function parseArgs(argv: string[]): JobArgs {
     resume,
     multiAgent: argv.includes("--multi-agent"),
     base,
+    paths: parsePaths(get("paths")),
   };
+}
+
+function parsePaths(raw: string | undefined): string[] {
+  if (!raw) return [];
+  const paths = raw
+    .split(",")
+    .map((p) => p.trim())
+    .filter(Boolean);
+  for (const p of paths) {
+    if (p.startsWith("-") || p.includes("..") || /[\0\r\n]/.test(p)) {
+      throw new Error(`Invalid --paths entry: "${p}".`);
+    }
+  }
+  return paths;
 }
 
 /** Lock file holds the owner PID. Alive → refuse; dead or unreadable → stale. */
@@ -143,6 +160,9 @@ export function buildPrompt(promptMd: string, args: JobArgs, paths: JobPaths, ba
     `evidence: ${paths.evidence}`,
     `previous_review: ${paths.previousReview ?? "none"}`,
     `multi_agent: ${args.multiAgent ? "yes (max 2 subagents)" : "no"}`,
+    args.paths.length
+      ? `paths: ${args.paths.join(" ")} (review only: git diff <base>..<sha> -- <paths>; other commits in the range belong to other tasks)`
+      : "paths: all",
     `main_worktree: ${paths.root}`,
     "Answer with the JSON for the schema only.",
   ];

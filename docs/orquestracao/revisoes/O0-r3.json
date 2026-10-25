@@ -1,0 +1,104 @@
+{
+  "task_id": "O0",
+  "round": 3,
+  "commit": "809fe7e",
+  "verdict": "changes_requested",
+  "acceptance": [
+    {
+      "criterion": "1. Recusa iniciar se o lock tem PID vivo; remove lock de PID morto; sempre libera o próprio lock.",
+      "status": "failed",
+      "evidence": "A lógica de takeover concorrente foi corrigida, mas o adaptador real em scripts/orq/codex-job.mjs:119 tenta remover o diretório marcador com rmSync(..., { recursive: false }). A reprodução direta no Node 24 retornou ERR_FS_EISDIR; acquireLock cria o novo lock e depois lança no finally, deixando o job sem iniciar e o lock preso."
+    },
+    {
+      "criterion": "2. Recusa rodada > 3, --resume na rodada 1 e memória livre < 1,5 GB.",
+      "status": "verified",
+      "evidence": "Implementação anteriormente validada permanece inalterada; vitest-r3.log registra 62/62 testes aprovados."
+    },
+    {
+      "criterion": "3. Máximo de duas tentativas persistentes; timeout de 45 minutos conta como tentativa.",
+      "status": "verified",
+      "evidence": "Implementação anteriormente validada permanece inalterada; vitest-r3.log registra 62/62 testes aprovados."
+    },
+    {
+      "criterion": "4. Codex usa execFile sem shell; review limpo com HEAD conferido; task exige codex/ciclo-3.",
+      "status": "verified",
+      "evidence": "Implementação anteriormente validada permanece inalterada; HEAD conferido como 809fe7efd3b192448dc725554041812c7e1dcb74."
+    },
+    {
+      "criterion": "5. Resultado validado pelo schema e por task_id, round e commit; inválido não é copiado.",
+      "status": "verified",
+      "evidence": "Implementação anteriormente validada permanece inalterada; tsc passou e vitest-r3.log registra 62/62 testes."
+    },
+    {
+      "criterion": "6. JSON válido é copiado para o destino correto e thread_id é salvo para resume.",
+      "status": "verified",
+      "evidence": "Fluxo anteriormente validado permanece coberto pela suíte registrada em vitest-r3.log: 62/62 testes."
+    },
+    {
+      "criterion": "7. isApproved aplica a regra do coordenador sem confiar no verdict.",
+      "status": "verified",
+      "evidence": "Implementação anteriormente validada permanece coberta pela suíte registrada em vitest-r3.log: 62/62 testes."
+    },
+    {
+      "criterion": "8. Nenhum segredo nos arquivos; .orq ignorado pelo Git.",
+      "status": "verified",
+      "evidence": "A correção de O0 contém apenas lógica de filesystem, testes e documentação, sem credenciais; .orq continua ignorado."
+    }
+  ],
+  "checks": [
+    {
+      "command": "git rev-parse HEAD",
+      "result": "pass",
+      "summary": "HEAD = 809fe7efd3b192448dc725554041812c7e1dcb74, correspondente ao SHA solicitado."
+    },
+    {
+      "command": "npx tsc --noEmit",
+      "result": "pass",
+      "summary": "Concluiu com código 0 e sem diagnósticos."
+    },
+    {
+      "command": "npm run lint",
+      "result": "pass",
+      "summary": "Concluiu com código 0: 0 erros e 8 avisos react-refresh preexistentes."
+    },
+    {
+      "command": "npx vitest run --maxWorkers=2 scripts/orq",
+      "result": "fail",
+      "summary": "O sandbox bloqueou o carregamento da configuração com spawn EPERM. A evidência vitest-r3.log registra 4 arquivos e 62/62 testes aprovados, além de cinco repetições dos testes de lock."
+    },
+    {
+      "command": "node -e \"const fs=require('node:fs'),os=require('node:os'),p=require('node:path'); const d=fs.mkdtempSync(p.join(os.tmpdir(),'rm-empty-')); fs.rmSync(d,{recursive:false,force:true})\"",
+      "result": "fail",
+      "summary": "Reprodução do adaptador real falhou com ERR_FS_EISDIR: rmSync com recursive:false não remove o diretório marcador vazio no Node 24/Windows."
+    },
+    {
+      "command": "git diff --check d82d07fa8a0bdf739b705046fa7c1220a89c4287..809fe7e",
+      "result": "pass",
+      "summary": "Nenhum erro de whitespace no delta informado."
+    },
+    {
+      "command": "npm run build",
+      "result": "not_run",
+      "summary": "Não aplicável à correção O0: não altera build ou rotas."
+    },
+    {
+      "command": "git status --short",
+      "result": "pass",
+      "summary": "Worktree limpo após remover o cache não versionado criado pela consulta Trail."
+    }
+  ],
+  "findings": [
+    {
+      "id": "O0-B1-R3",
+      "severity": "bloqueante",
+      "file": "scripts/orq/codex-job.mjs",
+      "line": 119,
+      "title": "Adaptador real não consegue liberar o marcador de takeover",
+      "detail": "O0-B1-R2 foi corrigido na lógica e nos testes simulados, mas a implementação efetiva de rmdir usa rmSync(dir, { recursive: false, force: true }). No Node 24/Windows essa chamada lança ERR_FS_EISDIR mesmo para diretório vazio. Como ocorre no finally de acquireLock após o novo lock ser criado, runJob rejeita antes de entrar em seu próprio try/finally e deixa codex.lock com o PID do processo que falhou. Os testes usam rmdirSync ou mocks, portanto não exercitam o adaptador de produção.",
+      "expected_fix": "Usar rmdirSync(dir) para o marcador vazio ou rmSync(dir, { recursive: true, force: true }); alinhar o realFs dos testes com o adaptador de produção e adicionar um teste que execute a implementação real de mkdirExclusive/rmdir durante a recuperação de um lock obsoleto.",
+      "repro_test": "it('o adaptador real libera o marcador após takeover', () => { const dir = mkdtempSync(path.join(tmpdir(), 'orq-lock-')); const marker = path.join(dir, 'codex.lock.takeover-999'); mkdirSync(marker); expect(() => productionFs.rmdir(marker)).not.toThrow(); expect(existsSync(marker)).toBe(false); });",
+      "previous_id": "O0-B1-R2"
+    }
+  ],
+  "summary": "O takeover concorrente agora concede o lock a apenas um processo, mas O0-B1-R2 permanece bloqueante porque o adaptador real lança ERR_FS_EISDIR ao remover o marcador. A evidência de 62/62 testes não detecta isso porque os testes usam rmdirSync ou mocks. Tsc e lint passaram; Vitest local continuou impedido por spawn EPERM. Os commits intermediários E0/E0b presentes no intervalo não foram revisados, conforme a regra de revalidação sem ampliação de escopo. Trail economizou aproximadamente 10.577 tokens nesta rodada."
+}
