@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Clock3, LayoutDashboard, PackageCheck, Send, Users } from "lucide-react";
+import { Clock3, LayoutDashboard, PackageCheck, Send, Tags, Users } from "lucide-react";
 import { useState } from "react";
 
 import { AdminMetric } from "@/components/common/MetricCards";
@@ -9,6 +9,7 @@ import { AppFrame } from "@/components/layout/AppFrame";
 import { PostListItem } from "@/components/post/PostListItem";
 import { ClientCard } from "@/features/admin/ClientCard";
 import { ClientDelivery } from "@/features/admin/delivery/ClientDelivery";
+import { PlansView } from "@/features/admin/plans/PlansView";
 import {
   adminActivePackagesQuery,
   adminClientsQuery,
@@ -18,7 +19,7 @@ import {
 import { useAuth } from "@/features/auth/useAuth";
 import { greeting, todayISO } from "@/lib/dates";
 
-type AdminView = "overview" | "clients";
+type AdminView = "overview" | "clients" | "plans";
 
 export function AdminWorkspace() {
   const [view, setView] = useState<AdminView>("overview");
@@ -68,6 +69,7 @@ export function AdminWorkspace() {
       nav={[
         { id: "overview", label: "Visão geral", icon: LayoutDashboard },
         { id: "clients", label: "Clientes", icon: Users },
+        { id: "plans", label: "Planos", icon: Tags },
       ]}
       active={view}
       onNavigate={(id) => {
@@ -84,6 +86,8 @@ export function AdminWorkspace() {
           }}
           onPreview={() => startPreview(deliveryClientId)}
         />
+      ) : view === "plans" ? (
+        <PlansView />
       ) : view === "overview" ? (
         <div className="page-enter">
           <header className="mb-7 flex flex-wrap items-end justify-between gap-4">

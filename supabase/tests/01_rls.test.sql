@@ -87,7 +87,7 @@ select throws_ok($$select public.set_post_published('bbbbbbbb-0000-4000-8000-000
   'P0002', null, 'RPC recusa post de B');
 select throws_ok($$select public.set_post_published('aaaaaaaa-0000-4000-8000-0000000000f2', true)$$,
   'P0002', null, 'RPC recusa rascunho próprio (invisível para A)');
-select throws_ok($$select public.assign_plan('aaaaaaaa-0000-4000-8000-00000000000c', 'eeeeeeee-0000-4000-8000-000000000001', '2026-11-02', '[]')$$,
+select throws_ok($$select public.assign_plan('aaaaaaaa-0000-4000-8000-00000000000c', 'eeeeeeee-0000-4000-8000-000000000001', '2026-11-02', '[]', gen_random_uuid())$$,
   '42501', null, 'assign_plan recusa cliente');
 select throws_ok($$select public.reorder_post_media('aaaaaaaa-0000-4000-8000-0000000000f1', '{}')$$,
   '42501', null, 'reorder_post_media recusa cliente');
@@ -131,12 +131,12 @@ select throws_ok($$select public.set_post_published('aaaaaaaa-0000-4000-8000-000
 update public.client_packages set status = 'ended' where client_id = 'aaaaaaaa-0000-4000-8000-00000000000c';
 select is((select posts_total from public.assign_plan('aaaaaaaa-0000-4000-8000-00000000000c',
   'eeeeeeee-0000-4000-8000-000000000001', '2026-11-02',
-  '[{"date":"2026-11-02","time":"10:00"},{"date":"2026-11-04","time":"10:00"}]')), 2, 'admin contrata plano');
+  '[{"date":"2026-11-02","time":"10:00"},{"date":"2026-11-04","time":"10:00"}]', gen_random_uuid())), 2, 'admin contrata plano');
 select is((select count(*)::int from public.posts p join public.client_packages k on k.id = p.client_package_id
   where k.status = 'active' and k.client_id = 'aaaaaaaa-0000-4000-8000-00000000000c' and p.status = 'draft'), 2,
   'assign_plan cria os slots como rascunho');
 select throws_ok($$select public.assign_plan('aaaaaaaa-0000-4000-8000-00000000000c', 'eeeeeeee-0000-4000-8000-000000000001', '2026-11-02',
-  '[{"date":"2026-11-02","time":"10:00"}]')$$, '22023', null, 'assign_plan recusa quantidade errada');
+  '[{"date":"2026-11-02","time":"10:00"}]', gen_random_uuid())$$, '22023', null, 'assign_plan recusa quantidade errada');
 
 insert into public.post_media (id, post_id, storage_path, position, width, height) values
   ('aaaaaaaa-0000-4000-8000-0000000000a2', 'aaaaaaaa-0000-4000-8000-0000000000f1', 'clients/a/posts/f1/2.jpg', 1, 1024, 1280);

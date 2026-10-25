@@ -30,9 +30,17 @@ function AssignPlanForm({ clientId, hasPackage }: { clientId: string; hasPackage
   const plans = (plansQuery.data ?? []).filter((plan) => plan.active);
   const [planId, setPlanId] = useState("");
   const [startDate, setStartDate] = useState(todayISO());
+  // One id per contracting intent: a double click or a retry after a network
+  // error reuses it, so the database returns the same package (T5).
+  const [requestId, setRequestId] = useState(() => crypto.randomUUID());
+  const renewIntent = () => setRequestId(crypto.randomUUID());
   const assign = useDeliveryMutation(
     clientId,
-    assignPlan,
+    async (vars: Parameters<typeof assignPlan>[0]) => {
+      const pkg = await assignPlan(vars);
+      renewIntent();
+      return pkg;
+    },
     "Pacote criado com os horários do plano.",
   );
 
@@ -41,7 +49,7 @@ function AssignPlanForm({ clientId, hasPackage }: { clientId: string; hasPackage
       className="mt-4 grid gap-3 border-t border-border pt-4 sm:grid-cols-[1fr_auto_auto] sm:items-end"
       onSubmit={(event) => {
         event.preventDefault();
-        if (planId) assign.mutate({ clientId, planId, startDate });
+        if (planId) assign.mutate({ clientId, planId, startDate, requestId });
       }}
     >
       <label className="block">
@@ -50,7 +58,10 @@ function AssignPlanForm({ clientId, hasPackage }: { clientId: string; hasPackage
         </span>
         <select
           value={planId}
-          onChange={(event) => setPlanId(event.target.value)}
+          onChange={(event) => {
+            setPlanId(event.target.value);
+            renewIntent();
+          }}
           className={fieldClass}
           required
         >
@@ -67,7 +78,10 @@ function AssignPlanForm({ clientId, hasPackage }: { clientId: string; hasPackage
         <input
           type="date"
           value={startDate}
-          onChange={(event) => setStartDate(event.target.value)}
+          onChange={(event) => {
+            setStartDate(event.target.value);
+            renewIntent();
+          }}
           className={fieldClass}
           required
         />

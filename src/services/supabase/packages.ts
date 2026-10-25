@@ -1,5 +1,6 @@
 import { addDays, todayISO } from "@/lib/dates";
 import { distributeSlots, packageEndDate } from "@/lib/scheduling";
+import type { AssignInput } from "@/services/mock/packages";
 import type { ClientPackage } from "@/types/domain";
 
 import { db, fail, toPlan } from "./shared";
@@ -44,17 +45,12 @@ export async function listEndingPackages(days = 15): Promise<ClientPackage[]> {
   return (data ?? []) as ClientPackage[];
 }
 
-interface AssignInput {
-  clientId: string;
-  planId: string;
-  startDate: string;
-}
-
 /** Slots are computed by the shared scheduler and validated by the RPC. */
 export async function assignPlan({
   clientId,
   planId,
   startDate,
+  requestId,
 }: AssignInput): Promise<ClientPackage> {
   const { data: planRow, error: planError } = await db()
     .from("plans")
@@ -78,6 +74,7 @@ export async function assignPlan({
     p_plan_id: planId,
     p_start_date: startDate,
     p_slots: slots,
+    p_request_id: requestId,
   });
   if (error) fail(error, "Não foi possível contratar o plano.");
   return data as ClientPackage;
