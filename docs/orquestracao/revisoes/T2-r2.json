@@ -1,0 +1,87 @@
+{
+  "task_id": "T2",
+  "round": 2,
+  "commit": "e45000c",
+  "verdict": "approved",
+  "acceptance": [
+    {
+      "criterion": "1. Nenhum segredo no repositório; service_role somente via Deno.env dentro da função.",
+      "status": "verified",
+      "evidence": "O diff da rodada não adiciona referências a service_role, chaves, tokens ou padrões JWT; index.ts permaneceu inalterado em relação à implementação previamente verificada."
+    },
+    {
+      "criterion": "2. 405 fora de POST; 401 sem sessão/JWT inválido; 403 para não-admin e admin bloqueado antes de qualquer escrita.",
+      "status": "verified",
+      "evidence": "A autorização permaneceu inalterada e a suíte completa do handler aprovou os casos de método, sessão, papel e bloqueio antes do dispatch."
+    },
+    {
+      "criterion": "3. create_account vincula ou desfaz; preserva cliente preexistente; duplicados retornam 409.",
+      "status": "verified",
+      "evidence": "T2-R1-001 foi resolvido: redirect_to é validado em handler.ts:170 antes de insertClient em handler.ts:191, comprovado pelo teste nas linhas 260-269. T2-R1-002 foi resolvido: falha de getClient vira vínculo ausente em handler.ts:213 e aciona a compensação best-effort da linha 215; os testes das linhas 272-288 comprovam remoção de usuário/cliente e continuidade quando deleteUser falha."
+    },
+    {
+      "criterion": "4. set_access recusa a própria conta e admins; atualiza banco antes do Auth; falha do ban retorna 502 mantendo bloqueio.",
+      "status": "verified",
+      "evidence": "O fluxo permaneceu inalterado e seus testes direcionados passaram dentro da suíte de 26 testes."
+    },
+    {
+      "criterion": "5. reset_access recusa bloqueadas/admins; update_email reverte Auth quando a cliente falha.",
+      "status": "verified",
+      "evidence": "Os fluxos permaneceram inalterados e seus testes direcionados passaram dentro da suíte de 26 testes."
+    },
+    {
+      "criterion": "6. UUID, e-mail e redirect_to inválidos retornam 400; mensagens de dependência não vazam na resposta.",
+      "status": "verified",
+      "evidence": "A suíte aprovou as validações e a sanitização. O novo teste confirma especificamente 400 para redirect_to inválido sem chamar insertClient nem persistir cliente."
+    },
+    {
+      "criterion": "7. deno check e testes do handler passam.",
+      "status": "verified",
+      "evidence": "deno check concluiu sem erros; o fallback previsto para o sandbox aprovou 1 arquivo e 26/26 testes. As evidências fornecidas registram os mesmos resultados."
+    }
+  ],
+  "checks": [
+    {
+      "command": "git rev-parse HEAD",
+      "result": "pass",
+      "summary": "HEAD = e45000c0d3e9eec61279b215ad4efd5d6d13020d, correspondente ao SHA solicitado."
+    },
+    {
+      "command": "git diff --check 7b183c18d7b3bcb8da733cd547d0a6d8faca10f4..e45000c -- <paths>",
+      "result": "pass",
+      "summary": "Nenhum erro de whitespace no recorte da revalidação."
+    },
+    {
+      "command": "npx tsc --noEmit",
+      "result": "pass",
+      "summary": "Concluiu com código 0."
+    },
+    {
+      "command": "npm run lint",
+      "result": "pass",
+      "summary": "Concluiu com código 0; somente 8 warnings preexistentes de react-refresh fora do recorte T2."
+    },
+    {
+      "command": "npx vitest run --maxWorkers=2 supabase/functions/admin-users/handler.test.ts",
+      "result": "fail",
+      "summary": "O carregador padrão falhou com spawn EPERM no sandbox."
+    },
+    {
+      "command": "node --import \"data:text/javascript,globalThis.__dirname%3Dprocess.cwd()%3B\" node_modules/vitest/vitest.mjs run --configLoader native --pool=threads --maxWorkers=2 supabase/functions/admin-users/handler.test.ts",
+      "result": "pass",
+      "summary": "Fallback previsto: 1 arquivo e 26/26 testes aprovados."
+    },
+    {
+      "command": "deno check supabase/functions/admin-users/index.ts",
+      "result": "pass",
+      "summary": "Index da Edge Function verificado sem erros."
+    },
+    {
+      "command": "git diff --unified=0 7b183c18d7b3bcb8da733cd547d0a6d8faca10f4..e45000c -- supabase/functions/admin-users | rg <padrões de segredo>",
+      "result": "pass",
+      "summary": "Nenhuma referência nova a service_role, chave, token ou padrão JWT foi encontrada."
+    }
+  ],
+  "findings": [],
+  "summary": "T2-R1-001 e T2-R1-002 estão resolvidos com implementação e testes específicos. Não há achados bloqueantes ou importantes; todos os critérios estão verificados. Nenhum serviço remoto foi acessado e o worktree permaneceu sem alterações rastreadas. 🌱 Trail economizou aproximadamente 12.256 tokens nesta revisão."
+}
