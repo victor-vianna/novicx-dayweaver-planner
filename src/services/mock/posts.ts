@@ -1,7 +1,9 @@
 import { addDays, todayISO } from "@/lib/dates";
 import { DRAFT_ONLY, NEEDS_ART } from "@/lib/status";
 import { clone, commit, delay, getDB, uid } from "@/mocks/store";
-import type { Actor, Post, PostMedia, PostWithMedia } from "@/types/domain";
+import type { Actor, Post, PostMedia, PostStatus, PostWithMedia } from "@/types/domain";
+
+import { recordEvent } from "./events";
 
 // Future RLS must reproduce this boundary: clients may read only their own
 // non-draft posts and may change publication status only on those posts.
@@ -63,6 +65,7 @@ export async function updatePost(id: string, patch: PostPatch): Promise<PostWith
   const arts = db.media.filter((m) => m.post_id === id).length;
   if (patch.status && patch.status !== "draft" && arts === 0) throw new Error(NEEDS_ART);
   const wasPublished = post.status === "published";
+  const before = { status: post.status, date: post.scheduled_date, time: post.scheduled_time };
   Object.assign(post, patch);
   if (patch.status) post.format = arts > 1 ? "carousel" : "single";
   if (patch.status && patch.status !== "published") {
@@ -73,8 +76,21 @@ export async function updatePost(id: string, patch: PostPatch): Promise<PostWith
     post.published_at = new Date().toISOString();
     post.published_by = "admin";
   }
+  if (post.status !== before.status) statusEvent(post, before.status);
+  if (post.scheduled_date !== before.date || post.scheduled_time !== before.time) {
+    recordEvent(post.id, "schedule", {
+      from_date: before.date,
+      from_time: before.time,
+      to_date: post.scheduled_date,
+      to_time: post.scheduled_time,
+    });
+  }
   commit();
   return clone(withMedia(post));
+}
+
+function statusEvent(post: Post, from: PostStatus, actor?: Actor) {
+  recordEvent(post.id, "status", { from, to: post.status, published_by: post.published_by }, actor);
 }
 
 /** Admin. Only drafts can be deleted; their arts go with them. */
@@ -86,6 +102,7 @@ export async function deletePost(id: string): Promise<{ filesLeft: number }> {
   if (post.status !== "draft") throw new Error(DRAFT_ONLY);
   db.posts = db.posts.filter((p) => p.id !== id);
   db.media = db.media.filter((m) => m.post_id !== id);
+  db.events = (db.events ?? []).filter((e) => e.post_id !== id);
   commit();
   return { filesLeft: 0 };
 }
@@ -102,9 +119,11 @@ export async function markPostPublished(id: string, actor: Actor): Promise<PostW
   await delay(260);
   const post = postForActor(id, actor);
   if (post.status === "draft") throw new Error("Esta publicação ainda não está disponível");
+  const from = post.status;
   post.status = "published";
   post.published_at = new Date().toISOString();
   post.published_by = actor.role;
+  if (from !== post.status) statusEvent(post, from, actor);
   commit();
   return clone(withMedia(post));
 }
@@ -113,9 +132,11 @@ export async function unmarkPostPublished(id: string, actor: Actor): Promise<Pos
   await delay(200);
   const post = postForActor(id, actor);
   if (post.status === "draft") throw new Error("Esta publicação ainda não está disponível");
+  const from = post.status;
   post.status = "ready";
   post.published_at = null;
   post.published_by = null;
+  if (from !== post.status) statusEvent(post, from, actor);
   commit();
   return clone(withMedia(post));
 }
@@ -186,6 +207,11 @@ export async function createPost(input: NewPostInput): Promise<PostWithMedia> {
     published_by: null,
   };
   db.posts.push(post);
+  recordEvent(post.id, "created", {
+    status: post.status,
+    date: post.scheduled_date,
+    time: post.scheduled_time,
+  });
   commit();
   return clone(withMedia(post));
 }

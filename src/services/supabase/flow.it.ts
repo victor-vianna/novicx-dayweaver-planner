@@ -57,6 +57,7 @@ const clients = await import("./clients");
 const packages = await import("./packages");
 const posts = await import("./posts");
 const media = await import("./media");
+const events = await import("./events");
 const { db, MEDIA_BUCKET } = await import("./shared");
 
 const jpeg = (name: string) =>
@@ -208,6 +209,29 @@ describe(`Supabase MVP flow (${REMOTE ? "remote dev" : "local stack"})`, () => {
     const direct = await db().from("posts").update({ status: "ready" }).eq("id", postId);
     expect(direct.error?.code).toBe("42501");
     expect((await posts.getPost(postId, { includeDrafts: true }))?.status).toBe("published");
+  });
+
+  it("the history records every change with its actor, readable only by the team", async () => {
+    await as(ADMIN);
+    const history = await events.listPostEvents(postId);
+    expect(history.map((e) => e.kind)).toEqual([
+      "created",
+      "media_added",
+      "media_added",
+      "media_replaced",
+      "status",
+      "status",
+    ]);
+    expect(history.at(-1)).toMatchObject({
+      actor_role: "client",
+      detail: { from: "ready", to: "published", published_by: "client" },
+    });
+    expect(history.slice(0, -1).every((e) => e.actor_role === "admin")).toBe(true);
+    const tamper = await db().from("post_events").delete().eq("post_id", postId);
+    expect(tamper.error?.code).toBe("42501");
+
+    await as(MARINA);
+    expect(await events.listPostEvents(postId)).toEqual([]);
   });
 
   it("another client sees nothing of it", async () => {

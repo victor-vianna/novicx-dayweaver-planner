@@ -30,6 +30,7 @@ import { deletePost, updatePost, type PostPatch } from "@/services/posts";
 import type { PostStatus, PostWithMedia } from "@/types/domain";
 
 import { MediaManager } from "./MediaManager";
+import { PostHistory } from "./PostHistory";
 
 const STATUS_OPTIONS: { value: PostStatus; label: string; hint: string }[] = [
   { value: "draft", label: STATUS_LABEL.draft, hint: "Só a equipe vê." },
@@ -260,6 +261,7 @@ export function PostEditor({
             </Button>
           </div>
         </form>
+        <PostHistory postId={post.id} />
       </DialogContent>
     </Dialog>
   );

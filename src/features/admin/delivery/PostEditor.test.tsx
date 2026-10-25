@@ -1,7 +1,7 @@
 // Post editor in mock mode: only a draft offers "Excluir rascunho", and the
 // deletion asks for confirmation first.
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { toast } from "sonner";
@@ -54,6 +54,16 @@ describe("PostEditor", () => {
     await waitFor(() => expect(onClose).toHaveBeenCalled());
     expect(getDB().posts.some((p) => p.id === post.id)).toBe(false);
     expect(toast.success).toHaveBeenCalledWith("Rascunho excluído.");
+  });
+
+  // T7: the timeline lists what changed, newest first.
+  it("shows the change history", async () => {
+    const row = getDB().posts.find((p) => p.status === "ready")!;
+    await posts.updatePost(row.id, { scheduled_time: "18:30" });
+    renderEditor("ready");
+    const history = await screen.findByRole("region", { name: "Histórico" });
+    expect(await within(history).findByText(/^Data: .* 18:30$/)).toBeInTheDocument();
+    expect(within(history).getByText(/^Equipe · /)).toBeInTheDocument();
   });
 
   // T6-R1-003: files left in Storage are reported, not hidden behind success.

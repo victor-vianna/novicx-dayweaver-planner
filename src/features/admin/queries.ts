@@ -3,6 +3,7 @@ import { queryOptions, useMutation, useQueryClient } from "@tanstack/react-query
 import { toast } from "sonner";
 
 import { getClient, listClients } from "@/services/clients";
+import { listPostEvents } from "@/services/events";
 import { listNotes } from "@/services/notes";
 import { listAllActivePackages, listClientPackages, listEndingPackages } from "@/services/packages";
 import { listPlans } from "@/services/plans";
@@ -39,6 +40,12 @@ export const adminPostQuery = (id: string) =>
   queryOptions({
     queryKey: ["admin", "post", id],
     queryFn: () => getPost(id, { includeDrafts: true }),
+  });
+
+export const adminPostEventsQuery = (postId: string) =>
+  queryOptions({
+    queryKey: ["admin", "events", postId],
+    queryFn: () => listPostEvents(postId),
   });
 
 export const adminNotesQuery = (clientId: string) =>
