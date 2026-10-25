@@ -1,5 +1,6 @@
 // Simulated authentication. NOT secure — it only routes the demo experience.
 // Replace with real auth (invites + per-client row security) in the next stage.
+import { ACCESS_SUSPENDED } from "@/lib/access";
 import { DEMO_ACCOUNTS } from "@/mocks/seed";
 import { clone, delay, getDB } from "@/mocks/store";
 import type { Client, Profile, Role } from "@/types/domain";
@@ -33,6 +34,7 @@ export async function getSessionFor(profileId: string): Promise<MockSession> {
   const db = getDB();
   const profile = db.profiles.find((p) => p.id === profileId);
   if (!profile) throw new Error("Conta não encontrada.");
+  if (profile.blocked_at) throw new Error(ACCESS_SUSPENDED);
   const client = db.clients.find((c) => c.user_id === profileId) ?? null;
   return clone({ profile, client });
 }

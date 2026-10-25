@@ -93,7 +93,7 @@ select is_empty($$select 1 from storage.objects where bucket_id = 'post-media'$$
 select throws_ok($$insert into public.posts (client_id, client_package_id, title, scheduled_date, scheduled_time)
     values ('bbbbbbbb-0000-4000-8000-00000000000c', 'bbbbbbbb-0000-4000-8000-0000000000b0', 'X', '2026-10-06', '10:00')$$,
   '42501', null, 'admin bloqueado não cria post');
-select throws_ok($$select public.assign_plan('bbbbbbbb-0000-4000-8000-00000000000c', 'eeeeeeee-0000-4000-8000-000000000001', '2026-11-02', '[]')$$,
+select throws_ok($$select public.assign_plan('bbbbbbbb-0000-4000-8000-00000000000c', 'eeeeeeee-0000-4000-8000-000000000001', '2026-11-02', '[]', gen_random_uuid())$$,
   '42501', null, 'admin bloqueado não contrata plano');
 select throws_ok($$insert into storage.objects (bucket_id, name)
     values ('post-media', 'clients/bbbbbbbb-0000-4000-8000-00000000000c/posts/bbbbbbbb-0000-4000-8000-0000000000f1/2.jpg')$$,

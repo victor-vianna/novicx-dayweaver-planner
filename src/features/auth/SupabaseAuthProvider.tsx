@@ -4,6 +4,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { AuthContext, type AuthStatus } from "@/features/auth/auth-context";
+import { ACCESS_SUSPENDED } from "@/lib/access";
 import * as auth from "@/services/supabase/auth";
 
 type AppSession = auth.AppSession;
@@ -32,6 +33,7 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<AppSession | null>(null);
   const [previewClientId, setPreviewClientId] = useState<string | null>(null);
   const [passwordRecovery, setPasswordRecovery] = useState(false);
+  const [sessionNotice, setSessionNotice] = useState<string | null>(null);
   const loadedUser = useRef<string | null>(null);
 
   const apply = useCallback((s: AppSession | null) => {
@@ -51,10 +53,16 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
       if (userId === loadedUser.current) return;
       try {
         const s = await auth.loadSession(userId);
-        if (active) apply(s);
-      } catch {
+        if (!active) return;
+        setSessionNotice(null);
+        apply(s);
+      } catch (reason) {
         await auth.signOut();
-        if (active) apply(null);
+        if (!active) return;
+        if (reason instanceof Error && reason.message === ACCESS_SUSPENDED) {
+          setSessionNotice(ACCESS_SUSPENDED);
+        }
+        apply(null);
       }
     };
 
@@ -77,6 +85,7 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
   const signIn = useCallback(
     async (email: string, password: string) => {
       const s = await auth.signInWithPassword(email, password);
+      setSessionNotice(null);
       writePreview(null);
       apply(s);
       return s;
@@ -89,6 +98,7 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signOut = useCallback(() => {
+    setSessionNotice(null);
     writePreview(null);
     apply(null);
     void auth.signOut();
@@ -127,6 +137,7 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
       requestPasswordReset: auth.requestPasswordReset,
       passwordRecovery,
       completePasswordReset,
+      sessionNotice,
     }),
     [
       status,
@@ -139,6 +150,7 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
       stopPreview,
       passwordRecovery,
       completePasswordReset,
+      sessionNotice,
     ],
   );
 

@@ -7,6 +7,7 @@ import type {
   InternalNote,
   Plan,
   Post,
+  PostEvent,
   PostMedia,
   Profile,
 } from "@/types/domain";
@@ -22,6 +23,8 @@ export interface MockDB {
   posts: Post[];
   media: PostMedia[];
   notes: InternalNote[];
+  /** Optional: sessions saved before the history existed have none. */
+  events?: PostEvent[];
 }
 
 export const DB_VERSION = 1;

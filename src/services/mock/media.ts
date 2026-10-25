@@ -3,6 +3,8 @@ import { imageExtension, readImageSize, validateImageFile } from "@/lib/media-fi
 import { clone, commit, delay, getDB, uid } from "@/mocks/store";
 import type { PostMedia, PostWithMedia } from "@/types/domain";
 
+import { recordEvent } from "./events";
+
 function findPost(postId: string) {
   const post = getDB().posts.find((p) => p.id === postId);
   if (!post) throw new Error("Publicação não encontrada");
@@ -37,6 +39,7 @@ export async function uploadPostMedia(postId: string, files: File[]): Promise<Po
   let position = db.media.filter((m) => m.post_id === postId).length;
   for (const file of files) {
     const { width, height } = await readImageSize(file);
+    recordEvent(postId, "media_added", { position });
     db.media.push({
       id: uid("m"),
       post_id: postId,
@@ -62,6 +65,7 @@ export async function replacePostMedia(mediaId: string, file: File): Promise<Pos
   const media = findMedia(mediaId);
   const { width, height } = await readImageSize(file);
   Object.assign(media, { url: URL.createObjectURL(file), width, height });
+  recordEvent(media.post_id, "media_replaced", { position: media.position });
   return snapshot(media.post_id);
 }
 
@@ -70,6 +74,7 @@ export async function removePostMedia(mediaId: string): Promise<PostWithMedia> {
   const db = getDB();
   const media = findMedia(mediaId);
   db.media = db.media.filter((m) => m.id !== mediaId);
+  recordEvent(media.post_id, "media_removed", { position: media.position });
   return snapshot(media.post_id);
 }
 

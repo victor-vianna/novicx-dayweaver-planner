@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { Clock3, LayoutDashboard, PackageCheck, Send, Users } from "lucide-react";
-import { useState } from "react";
+import { Clock3, LayoutDashboard, PackageCheck, Send, Tags, Users } from "lucide-react";
+import { useEffect, useState } from "react";
 
 import { AdminMetric } from "@/components/common/MetricCards";
 import { DemoTag, ErrorState, SectionTitle } from "@/components/common/States";
@@ -8,7 +8,11 @@ import { WorkspaceSkeleton } from "@/components/common/WorkspaceStates";
 import { AppFrame } from "@/components/layout/AppFrame";
 import { PostListItem } from "@/components/post/PostListItem";
 import { ClientCard } from "@/features/admin/ClientCard";
+import { ClientsView } from "@/features/admin/clients/ClientsView";
 import { ClientDelivery } from "@/features/admin/delivery/ClientDelivery";
+import { activeClientIds } from "@/features/admin/metrics";
+import { type AdminView, readAdminNav, writeAdminNav } from "@/features/admin/navigation";
+import { PlansView } from "@/features/admin/plans/PlansView";
 import {
   adminActivePackagesQuery,
   adminClientsQuery,
@@ -18,13 +22,17 @@ import {
 import { useAuth } from "@/features/auth/useAuth";
 import { greeting, todayISO } from "@/lib/dates";
 
-type AdminView = "overview" | "clients";
-
 export function AdminWorkspace() {
-  const [view, setView] = useState<AdminView>("overview");
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [deliveryClientId, setDeliveryClientId] = useState<string | null>(null);
   const { session, startPreview } = useAuth();
+  const profileId = session?.profile.id;
+  // Survives a reload in the same tab (sessionStorage, per profile).
+  const [nav, setNav] = useState(() => readAdminNav(profileId));
+  const [menuOpen, setMenuOpen] = useState(false);
+  const { view, deliveryClientId } = nav;
+  const setView = (next: AdminView) => setNav({ view: next, deliveryClientId: null });
+  const setDeliveryClientId = (id: string | null) =>
+    setNav((n) => ({ ...n, deliveryClientId: id }));
+  useEffect(() => writeAdminNav(profileId, nav), [profileId, nav]);
   const clientsQuery = useQuery(adminClientsQuery(false));
   const packagesQuery = useQuery(adminActivePackagesQuery());
   const upcomingQuery = useQuery(adminUpcomingQuery());
@@ -57,7 +65,7 @@ export function AdminWorkspace() {
   const upcoming = upcomingQuery.data ?? [];
   const ending = endingQuery.data ?? [];
   const clientsById = new Map(clients.map((client) => [client.id, client]));
-  const activeClientIds = new Set(packages.map((item) => item.client_id));
+  const activeIds = activeClientIds(clients, packages);
 
   return (
     <AppFrame
@@ -68,6 +76,7 @@ export function AdminWorkspace() {
       nav={[
         { id: "overview", label: "Visão geral", icon: LayoutDashboard },
         { id: "clients", label: "Clientes", icon: Users },
+        { id: "plans", label: "Planos", icon: Tags },
       ]}
       active={view}
       onNavigate={(id) => {
@@ -84,6 +93,8 @@ export function AdminWorkspace() {
           }}
           onPreview={() => startPreview(deliveryClientId)}
         />
+      ) : view === "plans" ? (
+        <PlansView />
       ) : view === "overview" ? (
         <div className="page-enter">
           <header className="mb-7 flex flex-wrap items-end justify-between gap-4">
@@ -100,7 +111,7 @@ export function AdminWorkspace() {
           </header>
 
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <AdminMetric icon={Users} value={clients.length} label="Clientes" />
+            <AdminMetric icon={Users} value={activeIds.size} label="Clientes ativas" />
             <AdminMetric icon={PackageCheck} value={packages.length} label="Pacotes ativos" />
             <AdminMetric icon={Send} value={upcoming.length} label="Próximas entregas" />
             <AdminMetric icon={Clock3} value={ending.length} label="Encerrando em breve" />
@@ -132,11 +143,11 @@ export function AdminWorkspace() {
                   </button>
                 }
               >
-                Clientes ativos
+                Clientes ativas
               </SectionTitle>
               <div className="space-y-3">
                 {clients
-                  .filter((client) => activeClientIds.has(client.id))
+                  .filter((client) => activeIds.has(client.id))
                   .map((client) => (
                     <ClientCard
                       key={client.id}
@@ -150,28 +161,10 @@ export function AdminWorkspace() {
           </div>
         </div>
       ) : (
-        <div className="page-enter">
-          <header className="mb-7">
-            <p className="text-sm font-medium text-primary-glow">Relacionamento</p>
-            <h1 className="mt-1 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
-              Clientes
-            </h1>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Abra uma cliente para enviar artes, ajustar datas e liberar publicações.
-            </p>
-          </header>
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {clients.map((client) => (
-              <ClientCard
-                key={client.id}
-                client={client}
-                pkg={packages.find((item) => item.client_id === client.id)}
-                expanded
-                onPreview={() => setDeliveryClientId(client.id)}
-              />
-            ))}
-          </div>
-        </div>
+        <ClientsView
+          onOpenDelivery={(id) => setDeliveryClientId(id)}
+          onPreview={(id) => startPreview(id)}
+        />
       )}
     </AppFrame>
   );

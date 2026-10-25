@@ -36,11 +36,16 @@ export async function listEndingPackages(days = 15): Promise<ClientPackage[]> {
   );
 }
 
-interface AssignInput {
+export interface AssignInput {
   clientId: string;
   planId: string;
   startDate: string;
+  /** One per contracting intent: a repeated submission returns the same package. */
+  requestId: string;
 }
+
+/** requestId → package id (demo only; the database keeps it in client_packages). */
+const assigned = new Map<string, string>();
 
 /**
  * Contracts a catalog plan for a client: snapshots name/quantity, closes the
@@ -50,9 +55,21 @@ export async function assignPlan({
   clientId,
   planId,
   startDate,
+  requestId,
 }: AssignInput): Promise<ClientPackage> {
   await delay(320);
   const db = getDB();
+  const previous = db.packages.find((p) => p.id === assigned.get(requestId));
+  if (previous) {
+    if (
+      previous.client_id !== clientId ||
+      previous.plan_id !== planId ||
+      previous.start_date !== startDate
+    ) {
+      throw new Error("Identificador da contratação já usado em outra contratação");
+    }
+    return clone(previous);
+  }
   const plan = db.plans.find((p) => p.id === planId);
   if (!plan) throw new Error("Plano não encontrado");
 
@@ -71,6 +88,7 @@ export async function assignPlan({
     status: "active",
   };
   db.packages.push(pkg);
+  assigned.set(requestId, pkg.id);
 
   const slots = distributeSlots({
     startDate: pkg.start_date,

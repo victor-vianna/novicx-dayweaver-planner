@@ -1,23 +1,36 @@
 // Admin editor for one publication: arts, title, optional caption, date/time
-// and status (draft → ready → published). Drafts stay hidden from the client.
-import { LoaderCircle, Save } from "lucide-react";
+// and status (draft → ready → published). Drafts stay hidden from the client
+// and are the only posts that can be deleted.
+import { LoaderCircle, Save, Trash2 } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
+import { toast } from "sonner";
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { useDeliveryMutation } from "@/features/admin/queries";
 import { isValidISO, isValidTime } from "@/lib/dates";
-import { STATUS_LABEL } from "@/lib/status";
+import { NEEDS_ART, STATUS_LABEL } from "@/lib/status";
 import {
   removePostMedia,
   reorderPostMedia,
   replacePostMedia,
   uploadPostMedia,
 } from "@/services/media";
-import { updatePost, type PostPatch } from "@/services/posts";
+import { deletePost, updatePost, type PostPatch } from "@/services/posts";
 import type { PostStatus, PostWithMedia } from "@/types/domain";
 
 import { MediaManager } from "./MediaManager";
+import { PostHistory } from "./PostHistory";
 
 const STATUS_OPTIONS: { value: PostStatus; label: string; hint: string }[] = [
   { value: "draft", label: STATUS_LABEL.draft, hint: "Só a equipe vê." },
@@ -75,6 +88,20 @@ export function PostEditor({
   );
   const remove = useDeliveryMutation(clientId, (id: string) => removePostMedia(id));
   const reorder = useDeliveryMutation(clientId, (ids: string[]) => reorderPostMedia(postId!, ids));
+  const discard = useDeliveryMutation(clientId, () => deletePost(postId!));
+  const confirmDiscard = () =>
+    discard.mutate(undefined, {
+      onSuccess: ({ filesLeft }) => {
+        if (filesLeft) {
+          toast.warning(
+            "Rascunho excluído, mas algumas artes não foram removidas do armazenamento.",
+          );
+        } else {
+          toast.success("Rascunho excluído.");
+        }
+        onClose();
+      },
+    });
   const mediaBusy = add.isPending || replace.isPending || remove.isPending || reorder.isPending;
 
   if (!post || !form) return null;
@@ -89,7 +116,7 @@ export function PostEditor({
     if (!isValidISO(form.scheduled_date)) return setError("Data inválida.");
     if (!isValidTime(form.scheduled_time)) return setError("Horário inválido.");
     if (form.status !== "draft" && post.media.length === 0) {
-      return setError("Envie ao menos uma arte antes de liberar para a cliente.");
+      return setError(NEEDS_ART);
     }
     save.mutate({
       title: form.title.trim(),
@@ -200,6 +227,31 @@ export function PostEditor({
             </p>
           )}
           <div className="flex flex-wrap justify-end gap-2 pt-2">
+            {post.status === "draft" && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="mr-auto text-destructive"
+                    disabled={discard.isPending}
+                  >
+                    <Trash2 />
+                    Excluir rascunho
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogTitle>Excluir este rascunho?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    A publicação e as artes enviadas serão removidas. Isso não pode ser desfeito.
+                  </AlertDialogDescription>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction onClick={confirmDiscard}>Excluir</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
             <Button type="button" variant="ghost" onClick={onClose}>
               Fechar
             </Button>
@@ -209,6 +261,7 @@ export function PostEditor({
             </Button>
           </div>
         </form>
+        <PostHistory postId={post.id} />
       </DialogContent>
     </Dialog>
   );

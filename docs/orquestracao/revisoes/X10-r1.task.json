@@ -1,0 +1,70 @@
+{
+  "task_id": "X10",
+  "round": 1,
+  "status": "delivered",
+  "branch": "codex/ciclo-3",
+  "commits": [],
+  "files_changed": [
+    "scripts/check-bundle.mjs",
+    "scripts/lib/bundle-scan.ts",
+    "scripts/lib/bundle-scan.test.ts",
+    "docs/ENTREGA-CODEX.md"
+  ],
+  "checks": [
+    {
+      "command": "git branch --show-current; git status --short",
+      "result": "pass",
+      "summary": "Branch codex/ciclo-3 confirmada; worktree estava limpo antes da implementação."
+    },
+    {
+      "command": "npx vitest run --maxWorkers=2 scripts/lib/bundle-scan.test.ts",
+      "result": "fail",
+      "summary": "A configuração do Vite não carregou devido a spawn EPERM da sandbox."
+    },
+    {
+      "command": "node --import \"data:text/javascript,globalThis.__dirname%3Dprocess.cwd()%3B\" node_modules/vitest/vitest.mjs run --configLoader native --pool=threads --maxWorkers=2 scripts/lib/bundle-scan.test.ts",
+      "result": "pass",
+      "summary": "1 arquivo e 9 testes passaram."
+    },
+    {
+      "command": "npx tsc --noEmit",
+      "result": "pass",
+      "summary": "Concluído sem erros."
+    },
+    {
+      "command": "npm run lint",
+      "result": "pass",
+      "summary": "Zero erros; 8 avisos preexistentes de Fast Refresh."
+    },
+    {
+      "command": "VITE_DATA_SOURCE=mock npm run build",
+      "result": "fail",
+      "summary": "Falhou ao carregar vite.config.ts por spawn EPERM da sandbox."
+    },
+    {
+      "command": "VITE_DATA_SOURCE=mock npx vite build --configLoader native && node scripts/check-bundle.mjs",
+      "result": "pass",
+      "summary": "Build Vercel concluído; 132 arquivos verificados e zero achados."
+    },
+    {
+      "command": "VITE_DATA_SOURCE=supabase npx vite build --configLoader native && node scripts/check-bundle.mjs",
+      "result": "pass",
+      "summary": "Build Vercel concluído; 132 arquivos verificados e zero achados."
+    },
+    {
+      "command": "node scripts/check-bundle.mjs em diretório sem saída de build",
+      "result": "pass",
+      "summary": "Exibiu a mensagem esperada e retornou exit code 2."
+    },
+    {
+      "command": "npx prettier --check scripts/check-bundle.mjs scripts/lib/bundle-scan.ts scripts/lib/bundle-scan.test.ts docs/ENTREGA-CODEX.md; git diff --check",
+      "result": "pass",
+      "summary": "Formatação e integridade do diff passaram."
+    }
+  ],
+  "out_of_scope_requests": [],
+  "limitations": [
+    "Os comandos Vitest e build literais não carregaram a configuração devido a spawn EPERM da sandbox; os fallbacks com configLoader native executaram os mesmos testes e builds com sucesso."
+  ],
+  "summary": "Implementado o scanner das saídas publicáveis para chaves sb_secret_, JWT service_role, SUPABASE_SERVICE_ROLE_KEY e chaves privadas PEM, sem revelar valores encontrados. Artefatos de build gerados foram removidos. Trail economizou aproximadamente 20.256 tokens nesta execução."
+}

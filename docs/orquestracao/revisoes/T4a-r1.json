@@ -1,0 +1,52 @@
+{
+  "task_id": "T4a",
+  "round": 1,
+  "commit": "1f6040c",
+  "verdict": "approved",
+  "acceptance": [
+    {
+      "criterion": "1. Migration nova e aditiva, removendo apenas a política e sem tocar dados.",
+      "status": "verified",
+      "evidence": "O diff adiciona supabase/migrations/20261025200000_no_client_delete.sql; suas únicas instruções são DROP POLICY clients_admin_delete e REVOKE DELETE. git diff --name-status confirma somente adições nos três caminhos autorizados."
+    },
+    {
+      "criterion": "2. clients mantém exatamente select, admin_insert e admin_update, sem DELETE para anon/authenticated.",
+      "status": "verified",
+      "evidence": "supabase/tests/04_clients_no_delete.test.sql:19 valida a lista exata com policies_are; linhas 22–25 verificam ausência do privilégio DELETE. A evidência db-test.log registra 9/9 testes passando com a migration pendente."
+    },
+    {
+      "criterion": "3. Admin, cliente e anon recebem 42501; admin arquiva e a cliente permanece cadastrada.",
+      "status": "verified",
+      "evidence": "O pgTAP cobre admin (linhas 29–35), cliente vinculada (linhas 38–43), anon (linhas 45–48) e persistência do cadastro (linhas 50–51). db-test.log registra 04_clients_no_delete.test.sql: 9/9 ok com --pending. O REVOKE no papel authenticated também independe do ator estar bloqueado ou tentar outra cliente."
+    },
+    {
+      "criterion": "4. pgTAP falha sem a migration, passa com --pending e migrations aplicadas permanecem inalteradas.",
+      "status": "verified",
+      "evidence": ".orq/evidence/T4a/db-test.log registra 3/9 e exit=1 sem --pending; 9/9 e exit=0 com --pending; as demais suítes passam em ambos os cenários e sete migrations aplicadas são reportadas como inalteradas."
+    }
+  ],
+  "checks": [
+    {
+      "command": "git rev-parse HEAD",
+      "result": "pass",
+      "summary": "HEAD = 1f6040c71e130e4bca2be85b8bfb8ebebc436af8, correspondente ao SHA solicitado."
+    },
+    {
+      "command": "git diff --check 6cc6456373b2e8c5e1b44c6571b24457c1cd722d..1f6040c -- <paths>",
+      "result": "pass",
+      "summary": "Nenhum erro de whitespace no diff revisado."
+    },
+    {
+      "command": "npm run db:test",
+      "result": "not_run",
+      "summary": "A CLI encerrou antes de iniciar os testes por EPERM ao tentar gravar C:\\Users\\victo\\.supabase\\telemetry.json; nova tentativa com telemetria desabilitada teve o mesmo bloqueio da sandbox."
+    },
+    {
+      "command": "npm run db:test:remote / npm run db:test:remote -- --pending",
+      "result": "not_run",
+      "summary": "Não executados por proibição explícita de acesso remoto; resultados avaliados pela evidência fornecida em .orq/evidence/T4a/db-test.log."
+    }
+  ],
+  "findings": [],
+  "summary": "Entrega aprovada: a migration remove a capacidade de DELETE de anon/authenticated, preserva a compensação interna via service_role e o pgTAP fornecido prova as negações e o arquivamento. A execução local independente foi impedida pela sandbox antes dos testes, mas a evidência do coordenador cobre integralmente os critérios. 🌱 trail saved ~6.875 tokens this turn."
+}

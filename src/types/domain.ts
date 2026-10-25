@@ -9,6 +9,8 @@ export interface Profile {
   id: string;
   role: Role;
   full_name: string;
+  /** Set when the team suspends the account (T1); null or absent = active. */
+  blocked_at?: string | null;
 }
 
 export interface Client {
@@ -68,6 +70,21 @@ export interface Post {
   status: PostStatus;
   published_at: string | null;
   published_by: "client" | "admin" | null;
+}
+
+export type PostEventKind =
+  "created" | "status" | "schedule" | "media_added" | "media_replaced" | "media_removed";
+
+/** Append-only change history of a post (admin only). */
+export interface PostEvent {
+  id: string;
+  post_id: string;
+  kind: PostEventKind;
+  /** status: from/to/published_by · schedule: from_date/from_time/to_date/to_time · media: position */
+  detail: Record<string, string | number | null>;
+  actor_id: string | null;
+  actor_role: Role | null;
+  created_at: string;
 }
 
 export interface PostMedia {

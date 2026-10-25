@@ -42,6 +42,7 @@ export type Database = {
           plan_id: string;
           plan_name_snapshot: string;
           posts_total: number;
+          request_id: string | null;
           start_date: string;
           status: Database["public"]["Enums"]["package_status"];
           updated_at: string;
@@ -54,6 +55,7 @@ export type Database = {
           plan_id: string;
           plan_name_snapshot: string;
           posts_total: number;
+          request_id?: string | null;
           start_date: string;
           status?: Database["public"]["Enums"]["package_status"];
           updated_at?: string;
@@ -66,6 +68,7 @@ export type Database = {
           plan_id?: string;
           plan_name_snapshot?: string;
           posts_total?: number;
+          request_id?: string | null;
           start_date?: string;
           status?: Database["public"]["Enums"]["package_status"];
           updated_at?: string;
@@ -219,6 +222,54 @@ export type Database = {
         };
         Relationships: [];
       };
+      post_events: {
+        Row: {
+          actor_id: string | null;
+          actor_role: Database["public"]["Enums"]["app_role"] | null;
+          client_id: string;
+          created_at: string;
+          detail: Json;
+          id: number;
+          kind: string;
+          post_id: string;
+        };
+        Insert: {
+          actor_id?: string | null;
+          actor_role?: Database["public"]["Enums"]["app_role"] | null;
+          client_id: string;
+          created_at?: string;
+          detail?: Json;
+          id?: never;
+          kind: string;
+          post_id: string;
+        };
+        Update: {
+          actor_id?: string | null;
+          actor_role?: Database["public"]["Enums"]["app_role"] | null;
+          client_id?: string;
+          created_at?: string;
+          detail?: Json;
+          id?: never;
+          kind?: string;
+          post_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "post_events_client_id_fkey";
+            columns: ["client_id"];
+            isOneToOne: false;
+            referencedRelation: "clients";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "post_events_post_id_fkey";
+            columns: ["post_id"];
+            isOneToOne: false;
+            referencedRelation: "posts";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       post_media: {
         Row: {
           created_at: string;
@@ -267,6 +318,7 @@ export type Database = {
           id: string;
           published_at: string | null;
           published_by: Database["public"]["Enums"]["publisher"] | null;
+          published_by_user: string | null;
           scheduled_date: string;
           scheduled_time: string;
           status: Database["public"]["Enums"]["post_status"];
@@ -282,6 +334,7 @@ export type Database = {
           id?: string;
           published_at?: string | null;
           published_by?: Database["public"]["Enums"]["publisher"] | null;
+          published_by_user?: string | null;
           scheduled_date: string;
           scheduled_time: string;
           status?: Database["public"]["Enums"]["post_status"];
@@ -297,6 +350,7 @@ export type Database = {
           id?: string;
           published_at?: string | null;
           published_by?: Database["public"]["Enums"]["publisher"] | null;
+          published_by_user?: string | null;
           scheduled_date?: string;
           scheduled_time?: string;
           status?: Database["public"]["Enums"]["post_status"];
@@ -318,10 +372,18 @@ export type Database = {
             referencedRelation: "client_packages";
             referencedColumns: ["id", "client_id"];
           },
+          {
+            foreignKeyName: "posts_published_by_user_fkey";
+            columns: ["published_by_user"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
         ];
       };
       profiles: {
         Row: {
+          blocked_at: string | null;
           created_at: string;
           full_name: string;
           id: string;
@@ -329,6 +391,7 @@ export type Database = {
           updated_at: string;
         };
         Insert: {
+          blocked_at?: string | null;
           created_at?: string;
           full_name?: string;
           id: string;
@@ -336,6 +399,7 @@ export type Database = {
           updated_at?: string;
         };
         Update: {
+          blocked_at?: string | null;
           created_at?: string;
           full_name?: string;
           id?: string;
@@ -349,10 +413,39 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      admin_set_post_status: {
+        Args: {
+          p_post_id: string;
+          p_status: Database["public"]["Enums"]["post_status"];
+        };
+        Returns: {
+          caption: string | null;
+          client_id: string;
+          client_package_id: string;
+          created_at: string;
+          format: Database["public"]["Enums"]["post_format"];
+          id: string;
+          published_at: string | null;
+          published_by: Database["public"]["Enums"]["publisher"] | null;
+          published_by_user: string | null;
+          scheduled_date: string;
+          scheduled_time: string;
+          status: Database["public"]["Enums"]["post_status"];
+          title: string;
+          updated_at: string;
+        };
+        SetofOptions: {
+          from: "*";
+          to: "posts";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
       assign_plan: {
         Args: {
           p_client_id: string;
           p_plan_id: string;
+          p_request_id: string;
           p_slots: Json;
           p_start_date: string;
         };
@@ -364,6 +457,7 @@ export type Database = {
           plan_id: string;
           plan_name_snapshot: string;
           posts_total: number;
+          request_id: string | null;
           start_date: string;
           status: Database["public"]["Enums"]["package_status"];
           updated_at: string;
@@ -377,6 +471,15 @@ export type Database = {
       };
       current_client_id: { Args: never; Returns: string };
       is_admin: { Args: never; Returns: boolean };
+      log_post_event: {
+        Args: {
+          p_client_id: string;
+          p_detail: Json;
+          p_kind: string;
+          p_post_id: string;
+        };
+        Returns: undefined;
+      };
       reorder_post_media: {
         Args: { p_media_ids: string[]; p_post_id: string };
         Returns: {
@@ -406,6 +509,7 @@ export type Database = {
           id: string;
           published_at: string | null;
           published_by: Database["public"]["Enums"]["publisher"] | null;
+          published_by_user: string | null;
           scheduled_date: string;
           scheduled_time: string;
           status: Database["public"]["Enums"]["post_status"];

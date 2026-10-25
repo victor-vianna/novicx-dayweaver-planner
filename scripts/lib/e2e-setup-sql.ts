@@ -16,7 +16,9 @@ declare
 begin
   insert into public.clients (id, display_name, business_name, profession, email) values
     ('ee2e0000-0000-4000-8000-0000000000c1', 'E2E A', '[E2E] Cliente A', 'Teste', 'e2e-a@example.com'),
-    ('ee2e0000-0000-4000-8000-0000000000c2', 'E2E B', '[E2E] Cliente B', 'Teste', 'e2e-b@example.com')
+    ('ee2e0000-0000-4000-8000-0000000000c2', 'E2E B', '[E2E] Cliente B', 'Teste', 'e2e-b@example.com'),
+    -- No Auth user: the lifecycle E2E creates it through the admin-users function.
+    ('ee2e0000-0000-4000-8000-0000000000c3', 'E2E Ciclo', '[E2E] Ciclo de vida', 'Teste', 'e2e-life@example.com')
   on conflict (id) do nothing;
 
   insert into auth.users (
@@ -50,13 +52,16 @@ begin
 
   insert into public.client_packages (id, client_id, plan_id, plan_name_snapshot, posts_total, start_date, end_date, status) values
     ('ee2e0000-0000-4000-8000-0000000000b1', 'ee2e0000-0000-4000-8000-0000000000c1', 'ee2e0000-0000-4000-8000-0000000000d1', '[E2E] Plano de teste', 4, today, today + 364, 'active'),
-    ('ee2e0000-0000-4000-8000-0000000000b2', 'ee2e0000-0000-4000-8000-0000000000c2', 'ee2e0000-0000-4000-8000-0000000000d1', '[E2E] Plano de teste', 4, today, today + 364, 'active')
+    ('ee2e0000-0000-4000-8000-0000000000b2', 'ee2e0000-0000-4000-8000-0000000000c2', 'ee2e0000-0000-4000-8000-0000000000d1', '[E2E] Plano de teste', 4, today, today + 364, 'active'),
+    -- F1: the full journey delivers a carousel to the lifecycle client.
+    ('ee2e0000-0000-4000-8000-0000000000b3', 'ee2e0000-0000-4000-8000-0000000000c3', 'ee2e0000-0000-4000-8000-0000000000d1', '[E2E] Plano de teste', 4, today, today + 364, 'active')
   on conflict (id) do nothing;
 end
 $e2e$;
 select c.email, c.user_id is not null as linked, p.role
   from public.clients c left join public.profiles p on p.id = c.user_id
- where c.id in ('ee2e0000-0000-4000-8000-0000000000c1', 'ee2e0000-0000-4000-8000-0000000000c2')
+ where c.id in ('ee2e0000-0000-4000-8000-0000000000c1', 'ee2e0000-0000-4000-8000-0000000000c2',
+                'ee2e0000-0000-4000-8000-0000000000c3')
 union all
 select u.email, true, p.role from auth.users u join public.profiles p on p.id = u.id
  where u.id = '${ADMIN}';

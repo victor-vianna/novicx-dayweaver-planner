@@ -2,6 +2,7 @@
 // in the Supabase dashboard; a database trigger links them to the client by e-mail.
 import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
 
+import { ACCESS_SUSPENDED } from "@/lib/access";
 import type { MockSession } from "@/services/mock/auth";
 import type { Profile } from "@/types/domain";
 
@@ -13,11 +14,13 @@ export type AppSession = MockSession;
 export async function loadSession(userId: string): Promise<AppSession> {
   const { data: profile, error } = await db()
     .from("profiles")
-    .select("id, role, full_name")
+    .select("id, role, full_name, blocked_at")
     .eq("id", userId)
     .maybeSingle();
   if (error) fail(error, "Não foi possível carregar sua conta.");
   if (!profile) throw new Error("Conta não encontrada.");
+  // A suspended account reads no client row (RLS), so check this first.
+  if (profile.blocked_at) throw new Error(ACCESS_SUSPENDED);
 
   const { data: client, error: clientError } = await db()
     .from("clients")
@@ -42,6 +45,7 @@ export async function signInWithPassword(email: string, password: string): Promi
     email: email.trim().toLowerCase(),
     password,
   });
+  if (error?.code === "user_banned") throw new Error(ACCESS_SUSPENDED);
   if (error || !data.user) {
     throw new Error(
       error?.status === 400 || error?.code === "invalid_credentials"

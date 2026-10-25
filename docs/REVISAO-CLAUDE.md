@@ -1,5 +1,12 @@
 # Revisão Claude — Ciclo 3
 
+## X10 — Bundle sem segredos (`a4c69e2`, `codex/ciclo-3`)
+
+- **Data:** 2026-10-25 · **Veredito:** aprovado, sem bloqueantes nem importantes.
+- **Diff:** lógica pura em `scripts/lib/bundle-scan.ts` (sb_secret_, JWT com `role: service_role` decodificado, `SUPABASE_SERVICE_ROLE_KEY`, PEM privada; publicável e JWT anon/authenticated permitidos; só arquivo e tipo na saída) e `scripts/check-bundle.mjs` (exit 1 achado, 2 sem build).
+- **Verificação do revisor:** 9/9; builds mock e supabase → 132 arquivos, zero achados; segredo plantado → exit 1 sem imprimir o valor (`.orq/evidence/X10/`); `tsc`/`eslint` sem erros.
+- **Melhoria opcional:** links simbólicos dentro da saída não são seguidos (hoje não há).
+
 ## X8 — Build para a Vercel (`7d179cf`, `codex/ciclo-3`)
 
 - **Data:** 2026-10-25 · **Veredito:** aprovado, sem bloqueantes nem importantes.

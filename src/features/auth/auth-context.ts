@@ -18,6 +18,11 @@ export interface AuthContextValue {
   /** True after opening a password-recovery link (Supabase mode only). */
   passwordRecovery: boolean;
   completePasswordReset: (password: string) => Promise<void>;
+  /**
+   * Why the saved session ended (e.g. access suspended), shown once on the login
+   * screen; cleared by a successful sign-in or an explicit sign-out.
+   */
+  sessionNotice: string | null;
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null);

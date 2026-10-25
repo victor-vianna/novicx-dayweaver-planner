@@ -57,6 +57,7 @@ const clients = await import("./clients");
 const packages = await import("./packages");
 const posts = await import("./posts");
 const media = await import("./media");
+const events = await import("./events");
 const { db, MEDIA_BUCKET } = await import("./shared");
 
 const jpeg = (name: string) =>
@@ -86,6 +87,8 @@ describe(`Supabase MVP flow (${REMOTE ? "remote dev" : "local stack"})`, () => {
     await as(ADMIN);
     const post = await posts.getPost(postId, { includeDrafts: true });
     for (const m of post?.media ?? []) uploaded.add(m.storage_path);
+    // Only drafts can be deleted (T6): move it back through the RPC first.
+    if (post && post.status !== "draft") await posts.updatePost(postId, { status: "draft" });
 
     // Files first: deleting the post cascades post_media, the only other record
     // of these paths. Storage reports a denied remove as an empty result, so the
@@ -179,13 +182,56 @@ describe(`Supabase MVP flow (${REMOTE ? "remote dev" : "local stack"})`, () => {
     expect(post?.media).toHaveLength(2);
     const signed = post!.media[0]!.url;
     expect(signed).toContain("token=");
-    const res = await fetch(signed);
+    // The portal downloads the art with fetch() from the app origin (share.ts).
+    const res = await fetch(signed, { headers: { Origin: "https://novicx-planner.vercel.app" } });
     expect(res.status).toBe(200);
     expect(res.headers.get("content-type")).toContain("image/jpeg");
+    expect(["*", "https://novicx-planner.vercel.app"]).toContain(
+      res.headers.get("access-control-allow-origin"),
+    );
 
     const published = await posts.markPostPublished(postId, { role: "client", clientId: marinaId });
     expect(published.status).toBe("published");
     expect(published.published_by).toBe("client");
+    const { data: who } = await db()
+      .from("posts")
+      .select("published_by_user")
+      .eq("id", postId)
+      .single();
+    expect(who?.published_by_user).toBe(session.profile.id);
+  });
+
+  it("admin cannot delete a published post or write its status directly", async () => {
+    await as(ADMIN);
+    await expect(posts.deletePost(postId)).rejects.toThrow("Só rascunhos podem ser excluídos.");
+    const deleted = await db().from("posts").delete().eq("id", postId).select("id");
+    expect(deleted.data).toEqual([]);
+    const direct = await db().from("posts").update({ status: "ready" }).eq("id", postId);
+    expect(direct.error?.code).toBe("42501");
+    expect((await posts.getPost(postId, { includeDrafts: true }))?.status).toBe("published");
+  });
+
+  it("the history records every change with its actor, readable only by the team", async () => {
+    await as(ADMIN);
+    const history = await events.listPostEvents(postId);
+    expect(history.map((e) => e.kind)).toEqual([
+      "created",
+      "media_added",
+      "media_added",
+      "media_replaced",
+      "status",
+      "status",
+    ]);
+    expect(history.at(-1)).toMatchObject({
+      actor_role: "client",
+      detail: { from: "ready", to: "published", published_by: "client" },
+    });
+    expect(history.slice(0, -1).every((e) => e.actor_role === "admin")).toBe(true);
+    const tamper = await db().from("post_events").delete().eq("post_id", postId);
+    expect(tamper.error?.code).toBe("42501");
+
+    await as(MARINA);
+    expect(await events.listPostEvents(postId)).toEqual([]);
   });
 
   it("another client sees nothing of it", async () => {
