@@ -1,0 +1,56 @@
+{
+  "task_id": "X2",
+  "round": 1,
+  "status": "delivered",
+  "branch": "codex/ciclo-3",
+  "commits": [],
+  "files_changed": [
+    "src/components/layout/AppFrame.tsx",
+    "src/components/layout/AppFrame.test.tsx",
+    "docs/ENTREGA-CODEX.md"
+  ],
+  "checks": [
+    {
+      "command": "git branch --show-current; git status --short --untracked-files=no",
+      "result": "pass",
+      "summary": "Branch codex/ciclo-3 confirmada e nenhum arquivo versionado estava modificado antes da implementação."
+    },
+    {
+      "command": "npx vitest run --maxWorkers=2 src/components/layout",
+      "result": "fail",
+      "summary": "A configuração não carregou porque a sandbox bloqueou subprocesso com spawn EPERM."
+    },
+    {
+      "command": "node --import \"data:text/javascript,globalThis.__dirname%3Dprocess.cwd()%3B\" node_modules/vitest/vitest.mjs run --configLoader native --pool=threads --maxWorkers=2 src/components/layout",
+      "result": "pass",
+      "summary": "1 arquivo e 3 testes passaram, cobrindo ARIA, inert/aria-hidden, foco, Esc, breakpoint intermediário e desktop."
+    },
+    {
+      "command": "npx tsc --noEmit",
+      "result": "pass",
+      "summary": "Concluído sem erros."
+    },
+    {
+      "command": "npm run lint",
+      "result": "pass",
+      "summary": "Concluído sem erros; permaneceram 8 avisos preexistentes de Fast Refresh."
+    },
+    {
+      "command": "npx prettier --check src/components/layout/AppFrame.tsx src/components/layout/AppFrame.test.tsx docs/ENTREGA-CODEX.md",
+      "result": "pass",
+      "summary": "Todos os arquivos seguem o estilo do Prettier."
+    },
+    {
+      "command": "git diff --check",
+      "result": "pass",
+      "summary": "Nenhum erro de whitespace encontrado."
+    }
+  ],
+  "out_of_scope_requests": [],
+  "limitations": [
+    "O Vitest pelo comando original não iniciou devido a spawn EPERM da sandbox; o fallback prescrito executou todos os testes direcionados com sucesso.",
+    "O cache não versionado .trail/cache, gerado pela consulta obrigatória de contexto do repositório, não integra a entrega e não deve ser incluído no commit.",
+    "A tarefa não exigia homologação visual; o comportamento desktop foi protegido por teste de componente."
+  ],
+  "summary": "Menu mobile entregue com estado ARIA completo, painel fechado removido da navegação e árvore acessível, foco transferido ao abrir e restaurado ao fechar com Esc, sem alterar as classes responsivas existentes. Trail economizou aproximadamente 23.298 tokens nesta execução."
+}
