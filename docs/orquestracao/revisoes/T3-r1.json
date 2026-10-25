@@ -1,0 +1,127 @@
+{
+  "task_id": "T3",
+  "round": 1,
+  "commit": "695eb1c",
+  "verdict": "changes_requested",
+  "acceptance": [
+    {
+      "criterion": "1. Fachada com a mesma assinatura nos dois modos; páginas existentes e modo mock inalterados.",
+      "status": "verified",
+      "evidence": "src/services/accounts.ts tipa todas as operações com typeof mock; tsc passou, os 15 testes direcionados passaram e a evidência npm-test.log registra 26 arquivos/195 testes aprovados."
+    },
+    {
+      "criterion": "2. Supabase: mensagem da função repassada; fallback genérico sem corpo JSON.",
+      "status": "verified",
+      "evidence": "src/services/supabase/accounts.ts:13-25 extrai { error } do Response e aplica FALLBACK quando indisponível; src/services/supabase/accounts.test.ts cobre ambos os casos e passou."
+    },
+    {
+      "criterion": "3. Conta bloqueada mostra ACCESS_SUSPENDED, sem sessão; sessão salva suspensa mostra o aviso no login.",
+      "status": "failed",
+      "evidence": "O serviço Supabase e a restauração de sessão possuem cobertura, mas LoginScreen.tsx:58-64 substitui ACCESS_SUSPENDED pela mensagem genérica no atalho da demonstração. Além disso, sessionNotice não é limpo após login posterior, reaparecendo indevidamente em um logout normal."
+    },
+    {
+      "criterion": "4. Mock: bloquear/desbloquear, recusar link para bloqueada, nunca gerenciar equipe e recusar e-mail duplicado/inválido.",
+      "status": "failed",
+      "evidence": "Bloqueio, desbloqueio, link bloqueado e validação básica possuem testes, porém resetAccess aceita perfis admin e a detecção de e-mail duplicado é sensível à caixa armazenada."
+    },
+    {
+      "criterion": "5. E2E remoto do ciclo de vida verde, sem resíduo além da conta fixa e2e-life@example.com.",
+      "status": "verified",
+      "evidence": "Evidência DEPLOY-T2/e2e.log registra 2 arquivos/9 testes aprovados. residue.txt registra 0 posts, 0 objetos, 4 usuários E2E fixos e a conta life vinculada, ativa e não banida."
+    }
+  ],
+  "checks": [
+    {
+      "command": "git rev-parse HEAD",
+      "result": "pass",
+      "summary": "HEAD 695eb1c4f5fa55dc4f0f70640e003489c8de272c corresponde ao SHA solicitado."
+    },
+    {
+      "command": "npx tsc --noEmit",
+      "result": "pass",
+      "summary": "Concluído com código 0 e sem diagnósticos."
+    },
+    {
+      "command": "npm run lint",
+      "result": "pass",
+      "summary": "Código 0; 0 erros e 8 avisos preexistentes de react-refresh fora da faixa T3."
+    },
+    {
+      "command": "npx vitest run --maxWorkers=2 src/services/accounts.test.ts src/services/supabase/accounts.test.ts src/services/supabase/auth.test.ts src/features/auth/MockAuthProvider.test.tsx src/services/supabase/accounts.it.ts",
+      "result": "fail",
+      "summary": "Configuração não iniciou por spawn EPERM da sandbox; executado novamente com o comando alternativo obrigatório."
+    },
+    {
+      "command": "node --import \"data:text/javascript,globalThis.__dirname%3Dprocess.cwd()%3B\" node_modules/vitest/vitest.mjs run --configLoader native --pool=threads --maxWorkers=2 src/services/accounts.test.ts src/services/supabase/accounts.test.ts src/services/supabase/auth.test.ts src/features/auth/MockAuthProvider.test.tsx src/services/supabase/accounts.it.ts",
+      "result": "pass",
+      "summary": "4 arquivos e 15 testes aprovados; o teste remoto .it permanece excluído na configuração local."
+    },
+    {
+      "command": "node --import \"data:text/javascript,globalThis.__dirname%3Dprocess.cwd()%3B\" node_modules/vitest/vitest.mjs run --configLoader native --pool=threads --maxWorkers=2",
+      "result": "fail",
+      "summary": "24 arquivos/192 testes passaram; 2 testes fora da faixa falharam por spawn EPERM e 1 teste de migrations encontrou o diretório local ignorado supabase/migrations/graft. A evidência do coordenador registra a suíte limpa com 26 arquivos/195 testes aprovados."
+    },
+    {
+      "command": "npm run e2e:setup:remote && npm run test:supabase:remote",
+      "result": "not_run",
+      "summary": "Comandos remotos proibidos ao revisor; foram inspecionadas as evidências fornecidas, que registram 9/9 testes aprovados e resíduo esperado."
+    },
+    {
+      "command": "npm run build",
+      "result": "not_run",
+      "summary": "O diff T3 não altera configuração de build nem rotas."
+    },
+    {
+      "command": "git diff --check e67458b330cddbb69cedab10e0c5a9b3620b6d7a..695eb1c -- <paths do JOB>",
+      "result": "pass",
+      "summary": "Nenhum erro de whitespace; worktree permaneceu limpo após a revisão."
+    }
+  ],
+  "findings": [
+    {
+      "id": "T3-R1-001",
+      "severity": "bloqueante",
+      "file": "src/features/auth/LoginScreen.tsx",
+      "line": 63,
+      "title": "Atalho de login mock oculta a mensagem de acesso suspenso",
+      "detail": "Quando a cliente de demonstração está bloqueada, signInAsDemo rejeita com ACCESS_SUSPENDED, mas enterDemo descarta o erro e exibe “Não foi possível abrir a demonstração.”. Assim, um caminho de login de conta bloqueada não apresenta a mensagem clara exigida pelo critério 3.",
+      "expected_fix": "Preservar a mensagem quando a rejeição for um Error, como já ocorre no submit do formulário, e adicionar cobertura do atalho bloqueado.",
+      "repro_test": "await accounts.setAccessBlocked(DEMO_ACCOUNTS.client.profileId, true); render(<MockAuthProvider><LoginScreen /></MockAuthProvider>); await user.click(screen.getByRole(\"button\", { name: /Área cliente/i })); expect(await screen.findByRole(\"alert\")).toHaveTextContent(ACCESS_SUSPENDED);",
+      "previous_id": ""
+    },
+    {
+      "id": "T3-R1-002",
+      "severity": "bloqueante",
+      "file": "src/services/mock/accounts.ts",
+      "line": 52,
+      "title": "Mock gera link de recuperação para conta da equipe",
+      "detail": "resetAccess valida apenas existência e blocked_at. Ao receber o profileId do admin, retorna o link .invalid, enquanto a Edge Function recusa qualquer role diferente de client. Isso viola o requisito de nunca gerenciar contas da equipe.",
+      "expected_fix": "Antes de retornar o link, exigir profile.role === \"client\" e rejeitar os demais perfis com a mesma mensagem usada por setAccessBlocked e pela Edge Function.",
+      "repro_test": "it(\"never resets access for team accounts\", async () => { await expect(accounts.resetAccess(DEMO_ACCOUNTS.admin.profileId)).rejects.toThrow(/clientes/); });",
+      "previous_id": ""
+    },
+    {
+      "id": "T3-R1-003",
+      "severity": "bloqueante",
+      "file": "src/services/mock/accounts.ts",
+      "line": 67,
+      "title": "Duplicidade de e-mail no mock depende da capitalização armazenada",
+      "detail": "O novo e-mail é normalizado para minúsculas, mas os e-mails existentes são comparados sem normalização. Como os serviços mock de clientes aceitam valores com caixa original, “Duplicado@Exemplo.com” e “duplicado@exemplo.com” podem coexistir, contrariando o critério de recusar e-mail duplicado.",
+      "expected_fix": "Comparar os e-mails existentes após trim().toLowerCase(), ou impor a normalização em todas as escritas do store, e cobrir duplicidade com caixa diferente.",
+      "repro_test": "it(\"refuses duplicate e-mail regardless of stored casing\", async () => { const other = getDB().clients.find((c) => c.id !== marina().id)!; other.email = \"Duplicado@Exemplo.com\"; await expect(accounts.changeClientEmail(marina().id, \"duplicado@exemplo.com\")).rejects.toThrow(/Já existe/); });",
+      "previous_id": ""
+    },
+    {
+      "id": "T3-R1-004",
+      "severity": "importante",
+      "file": "src/features/auth/MockAuthProvider.tsx",
+      "line": 67,
+      "title": "Aviso de suspensão persiste depois de uma autenticação válida",
+      "detail": "sessionNotice é definido ao restaurar uma sessão bloqueada, mas não é limpo por finish/signIn nem por logout explícito; o mesmo ocorre em SupabaseAuthProvider.tsx:83-101. Após entrar com uma conta ativa e sair normalmente, o novo LoginScreen inicializa o erro com o aviso antigo e acusa suspensão indevidamente.",
+      "expected_fix": "Tratar sessionNotice como aviso de uso único: limpá-lo em login bem-sucedido e logout explícito, preservando-o somente na transição causada pela restauração de uma sessão suspensa. Adicionar teste dos dois providers ou do contrato compartilhado.",
+      "repro_test": "Restaure u-marina bloqueada no MockAuthProvider, confirme sessionNotice, execute signInAsDemo(\"admin\") e depois signOut(); espere sessionNotice null. Hoje ele continua igual a ACCESS_SUSPENDED.",
+      "previous_id": ""
+    }
+  ],
+  "summary": "Alterações solicitadas: há três falhas diretas nos critérios de aceite do modo mock — mensagem de suspensão mascarada, recuperação permitida para admin e duplicidade de e-mail sensível à caixa — além de um aviso de suspensão obsoleto após login válido. Tipagem, lint e testes direcionados passaram; as evidências remotas do ciclo de vida e resíduo estão adequadas."
+}
