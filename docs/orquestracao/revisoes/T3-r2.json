@@ -1,0 +1,82 @@
+{
+  "task_id": "T3",
+  "round": 2,
+  "commit": "c87bad2",
+  "verdict": "approved",
+  "acceptance": [
+    {
+      "criterion": "1. Fachada com a mesma assinatura nos dois modos; páginas existentes e modo mock inalterados.",
+      "status": "verified",
+      "evidence": "A rodada 2 não altera a fachada. npx tsc --noEmit passou; os 4 arquivos/12 testes direcionados passaram, incluindo os testes existentes do MockAuthProvider. A evidência npm-test-r2.log registra a suíte completa com 28 arquivos e 198/198 testes aprovados."
+    },
+    {
+      "criterion": "2. Supabase: mensagem da função repassada; fallback genérico sem corpo JSON.",
+      "status": "verified",
+      "evidence": "Critério já verificado na rodada 1 e não alterado pelo diff 695eb1c..c87bad2; src/services/supabase/accounts.ts permanece fora das correções desta rodada."
+    },
+    {
+      "criterion": "3. Conta bloqueada mostra ACCESS_SUSPENDED, sem sessão; sessão salva suspensa mostra o aviso no login.",
+      "status": "verified",
+      "evidence": "T3-R1-001 foi resolvido em LoginScreen.tsx:61-64, que preserva Error.message. T3-R1-004 foi resolvido em MockAuthProvider.tsx:67-91 e SupabaseAuthProvider.tsx:54-103, que limpam sessionNotice nos momentos previstos. LoginScreen.test.tsx e SupabaseAuthProvider.test.tsx passaram; r2-without-fix.log demonstra que esses testes falhavam antes das correções."
+    },
+    {
+      "criterion": "4. Mock: bloquear/desbloquear, recusar link para bloqueada, nunca gerenciar equipe e recusar e-mail duplicado/inválido.",
+      "status": "verified",
+      "evidence": "T3-R1-002 foi resolvido em src/services/mock/accounts.ts:55-57 com validação de role client. T3-R1-003 foi resolvido em src/services/mock/accounts.ts:68-70 com normalização dos e-mails armazenados. src/services/accounts.test.ts cobre ambos os cenários e passou."
+    },
+    {
+      "criterion": "5. E2E remoto do ciclo de vida verde, sem resíduo além da conta fixa e2e-life@example.com.",
+      "status": "verified",
+      "evidence": "Critério já verificado na rodada 1 e não alterado nesta rodada. A evidência DEPLOY-T2/e2e.log registra 9/9 testes e residue.txt registra somente os usuários E2E fixos, sem posts ou objetos residuais."
+    }
+  ],
+  "checks": [
+    {
+      "command": "git rev-parse HEAD",
+      "result": "pass",
+      "summary": "HEAD c87bad27a8a1f998bf9fe182024e814b3bb77858 corresponde ao SHA solicitado."
+    },
+    {
+      "command": "npx tsc --noEmit",
+      "result": "pass",
+      "summary": "Concluído com código 0 e sem diagnósticos."
+    },
+    {
+      "command": "npm run lint",
+      "result": "pass",
+      "summary": "Código 0; 0 erros e 8 avisos preexistentes de react-refresh fora da faixa T3."
+    },
+    {
+      "command": "npx vitest run --maxWorkers=2 src/features/auth/LoginScreen.test.tsx src/features/auth/SupabaseAuthProvider.test.tsx src/features/auth/MockAuthProvider.test.tsx src/services/accounts.test.ts",
+      "result": "fail",
+      "summary": "A configuração não iniciou por spawn EPERM da sandbox; o comando alternativo obrigatório foi executado em seguida."
+    },
+    {
+      "command": "node --import \"data:text/javascript,globalThis.__dirname%3Dprocess.cwd()%3B\" node_modules/vitest/vitest.mjs run --configLoader native --pool=threads --maxWorkers=2 src/features/auth/LoginScreen.test.tsx src/features/auth/SupabaseAuthProvider.test.tsx src/features/auth/MockAuthProvider.test.tsx src/services/accounts.test.ts",
+      "result": "pass",
+      "summary": "4 arquivos e 12 testes aprovados."
+    },
+    {
+      "command": "npm test (evidência .orq/evidence/T3/npm-test-r2.log)",
+      "result": "pass",
+      "summary": "Evidência do coordenador registra 28 arquivos e 198/198 testes aprovados."
+    },
+    {
+      "command": "npm run e2e:setup:remote && npm run test:supabase:remote",
+      "result": "not_run",
+      "summary": "Comandos remotos proibidos ao revisor; as evidências remotas previamente verificadas permanecem aplicáveis porque o diff da rodada 2 não toca o E2E ou a integração remota."
+    },
+    {
+      "command": "npm run build",
+      "result": "not_run",
+      "summary": "O diff não altera rotas nem configuração de build."
+    },
+    {
+      "command": "git diff --check 695eb1c4f5fa55dc4f0f70640e003489c8de272c..c87bad2 -- <paths do JOB>",
+      "result": "pass",
+      "summary": "Nenhum erro de whitespace; o worktree permaneceu limpo."
+    }
+  ],
+  "findings": [],
+  "summary": "Aprovado. T3-R1-001, T3-R1-002, T3-R1-003 e T3-R1-004 foram resolvidos com testes de regressão que falhavam sem as correções e passam no commit revisado. Nenhum achado bloqueante ou importante permanece no escopo da revalidação."
+}
