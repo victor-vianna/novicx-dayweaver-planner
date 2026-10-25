@@ -1,0 +1,92 @@
+{
+  "task_id": "O1",
+  "round": 2,
+  "commit": "ef8761c",
+  "verdict": "approved",
+  "acceptance": [
+    {
+      "criterion": "1. Com --pending, a migration pendente é executada dentro de cada lote.",
+      "status": "verified",
+      "evidence": "db-test-pending.log prova a sonda 1/1 com --pending e 0/1 sem; db-test-pending-r2.log confirma o runner atualizado com duas migrations pendentes e todos os lotes aprovados."
+    },
+    {
+      "criterion": "2. Nenhuma alteração da migration pendente fica gravada.",
+      "status": "verified",
+      "evidence": "migration-list-before.txt e migration-list-after.txt possuem SHA-256 idêntico, probe-after.txt registra probe:null e db-test-pending-r2.log informa applied migrations unchanged (5). O bypass de COMMIT da rodada anterior foi fechado e revalidado localmente."
+    },
+    {
+      "criterion": "3. O runner falha se a lista aplicada mudar durante a execução.",
+      "status": "verified",
+      "evidence": "A implementação já verificada em scripts/db-test-remote.mjs:112-122 não foi alterada nesta rodada: diferença incrementa failed e produz saída 1."
+    },
+    {
+      "criterion": "4. Controle de transação/concurrently é recusado, sem falsos positivos em corpos e strings.",
+      "status": "verified",
+      "evidence": "scripts/lib/sql-guard.ts agora trata comentários aninhados, E-strings, identificadores citados e dollar tags com dígitos. A suíte local aprovou 42/42 testes; o reprodutor independente rejeitou os dois COMMITs ocultos e aceitou E-string e $body1$ válidos."
+    },
+    {
+      "criterion": "5. Migration pendente fora de ordem é recusada.",
+      "status": "verified",
+      "evidence": "A implementação e o teste de pendingMigrations permanecem inalterados; a suíte scripts/lib aprovou 42/42 testes."
+    },
+    {
+      "criterion": "6. Sem --pending, o comportamento anterior permanece 74/74.",
+      "status": "verified",
+      "evidence": "db-test-legacy-0113c6c.log demonstra 19/19, 42/42 e 13/13, totalizando 74/74 com exit=0. A única mudança posterior é o lexer; seu teste aceita todos os arquivos pgTAP atuais e passou localmente."
+    }
+  ],
+  "checks": [
+    {
+      "command": "git rev-parse HEAD",
+      "result": "pass",
+      "summary": "HEAD confirmado como ef8761c4ef08998bd8c10477a02b15efa6e691b0."
+    },
+    {
+      "command": "npx tsc --noEmit",
+      "result": "pass",
+      "summary": "Concluído com código 0."
+    },
+    {
+      "command": "npm run lint",
+      "result": "pass",
+      "summary": "Código 0; nenhum erro e 8 avisos preexistentes de react-refresh."
+    },
+    {
+      "command": "npx eslint scripts",
+      "result": "pass",
+      "summary": "Concluído com código 0 e sem diagnósticos."
+    },
+    {
+      "command": "npx vitest run --maxWorkers=2 scripts/lib",
+      "result": "fail",
+      "summary": "A sandbox impediu o spawn usado pelo Vite antes da execução dos testes (EPERM)."
+    },
+    {
+      "command": "node --import \"data:text/javascript,globalThis.__dirname%3Dprocess.cwd()%3B\" node_modules/vitest/vitest.mjs run --configLoader native --pool=threads --maxWorkers=2 scripts/lib",
+      "result": "pass",
+      "summary": "Fallback previsto pelo JOB: 3 arquivos e 42 testes aprovados."
+    },
+    {
+      "command": "node --experimental-strip-types --input-type=module -e \"<revalidação dos guards e literais>\"",
+      "result": "pass",
+      "summary": "O COMMIT após comentário aninhado foi rejeitado por ambos os guards; E-string escapada e corpo $body1$ foram aceitos."
+    },
+    {
+      "command": "git diff --check 0113c6c26dd1b9b71335011ca983bc0d68e137f9..ef8761c -- scripts/lib/sql-guard.ts scripts/lib/sql-guard.test.ts docs/orquestracao/tarefas/O1.md",
+      "result": "pass",
+      "summary": "Nenhum erro de whitespace."
+    },
+    {
+      "command": "npm run build",
+      "result": "not_run",
+      "summary": "O delta não altera build nem rotas."
+    },
+    {
+      "command": "Comandos Supabase remotos",
+      "result": "not_run",
+      "summary": "Proibidos ao revisor; foram avaliadas exclusivamente as evidências fornecidas pelo coordenador."
+    }
+  ],
+  "findings": [],
+  "summary": "Aprovado. O1-R1-001 foi resolvido pelo lexer PostgreSQL ampliado e por regressões que cobrem o bypass e os falsos positivos. O1-R1-002 foi resolvido pela evidência explícita da suíte legada 74/74. Nenhum achado bloqueante ou importante permanece."
+}
