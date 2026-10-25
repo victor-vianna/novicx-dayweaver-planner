@@ -1,0 +1,87 @@
+{
+  "task_id": "E0",
+  "round": 1,
+  "commit": "b21531c9020e8d8f795788a674b44c996f485f4e",
+  "verdict": "approved",
+  "acceptance": [
+    {
+      "criterion": "1. Migration nova e aditiva; mantém security definer, search_path vazio e execução somente por authenticated.",
+      "status": "verified",
+      "evidence": "git diff --name-status registra 20261024200000_reorder_media_exact_set.sql como arquivo novo. A função mantém security definer e set search_path = '' nas linhas 9-10, valida o ator na linha 13 e, por usar CREATE OR REPLACE com a mesma assinatura, preserva os REVOKE/GRANT existentes em 20261023120100_rls.sql:267-270."
+    },
+    {
+      "criterion": "2. pgTAP cobre entradas inválidas, preservação da ordem e reordenação válida.",
+      "status": "verified",
+      "evidence": "supabase/tests/01_rls.test.sql:143-164 cobre reordenação válida, duplicata, mídia ausente, mídia de outro post, elemento nulo e ordem intacta. A migration também recusa array NULL em 20261024200000_reorder_media_exact_set.sql:16. db-test.log registra 47/47 com a migration pendente."
+    },
+    {
+      "criterion": "3. Testes falham contra a função anterior e passam com a migration pendente sem persistir migrations.",
+      "status": "verified",
+      "evidence": "db-test.log registra 01_rls com 45/47 sem --pending, depois 19/19, 47/47 e 13/13 com --pending, além de 'applied migrations unchanged (5)'. O runner remoto não foi reexecutado nesta revisão porque comandos contra banco remoto são proibidos."
+    },
+    {
+      "criterion": "4. Setup e E2E validam URL, chave publicável e senha antes de escritas.",
+      "status": "verified",
+      "evidence": "scripts/lib/e2e-env.ts:16 e 28-40 impõe URL exata do dev, prefixo sb_publishable_ e senha ASCII segura de 16-128 caracteres. scripts/e2e-remote-setup.mjs:25-39 e flow.it.ts:28-35 executam as guardas antes das operações. A suíte scripts/lib passou com 32/32 testes."
+    },
+    {
+      "criterion": "5. Setup toca somente os IDs exatos das fixtures.",
+      "status": "verified",
+      "evidence": "scripts/lib/e2e-setup-sql.ts:5-55 usa constantes exatas nas inserções e update e restringe identidades por u.id = any(v_ids); não há busca por prefixo. scripts/lib/e2e.test.ts:41-52 verifica a lista exata e a ausência de um quarto usuário com o mesmo prefixo."
+    },
+    {
+      "criterion": "6. Falhas de limpeza reprovam o E2E e não restam post, mídia ou objetos.",
+      "status": "verified",
+      "evidence": "src/services/supabase/flow.it.ts:84-110 remove todos os caminhos acumulados, verifica erros, lista a pasta, rejeita objetos residuais e confirma exatamente um post excluído; exceções em afterAll reprovam a suíte. e2e.log registra 7/7 testes e residue.json registra media=0, objects=0 e posts=0."
+    },
+    {
+      "criterion": "7. Não há segredo em código, logs ou evidências.",
+      "status": "verified",
+      "evidence": "Inspeção integral do diff e das quatro evidências não encontrou service_role, JWT, SUPABASE_SERVICE_ROLE ou chave secreta real. A única ocorrência de sb_secret_ nos arquivos alterados é o valor fictício sb_secret_x usado em teste negativo."
+    }
+  ],
+  "checks": [
+    {
+      "command": "git rev-parse HEAD",
+      "result": "pass",
+      "summary": "HEAD b21531c9020e8d8f795788a674b44c996f485f4e corresponde ao SHA solicitado."
+    },
+    {
+      "command": "git diff --check 814c641959bd434fa1865cd0f919d5667ecd2324..b21531c -- <paths do JOB>",
+      "result": "pass",
+      "summary": "Nenhum erro de whitespace no diff revisado."
+    },
+    {
+      "command": "npx vitest run --maxWorkers=2 scripts/lib",
+      "result": "fail",
+      "summary": "O carregamento inicial da configuração falhou com spawn EPERM da sandbox; aplicado o fallback prescrito pelo JOB."
+    },
+    {
+      "command": "node --import \"data:text/javascript,globalThis.__dirname%3Dprocess.cwd()%3B\" node_modules/vitest/vitest.mjs run --configLoader native --pool=threads --maxWorkers=2 scripts/lib",
+      "result": "pass",
+      "summary": "3 arquivos e 32 testes passaram em 2,41 s."
+    },
+    {
+      "command": "npx tsc --noEmit",
+      "result": "pass",
+      "summary": "TypeScript concluiu com código 0 e sem diagnósticos."
+    },
+    {
+      "command": "npm run lint",
+      "result": "pass",
+      "summary": "ESLint concluiu com 0 erros e 8 avisos preexistentes de react-refresh fora do diff."
+    },
+    {
+      "command": "npm run db:test:remote / npm run db:test:remote -- --pending",
+      "result": "not_run",
+      "summary": "Não executado: o JOB proíbe comandos contra banco remoto. Foram inspecionadas as evidências db-test.log fornecidas pelo coordenador."
+    },
+    {
+      "command": "npm run test:supabase:remote",
+      "result": "not_run",
+      "summary": "Não executado: o JOB proíbe acesso remoto. e2e.log e residue.json foram usados como evidência."
+    }
+  ],
+  "findings": [],
+  "summary": "Entrega aprovada: nenhum achado bloqueante ou importante, todos os sete critérios foram verificados e as verificações locais aplicáveis passaram pelo fallback exigido. O worktree permaneceu sem alterações rastreadas; apenas .trail/cache/ aparece como cache não rastreado. Baseado no aprendizado de Victor sobre Supabase remoto e limite de workers; trail economizou aproximadamente 609 mil tokens nesta revisão."
+}
