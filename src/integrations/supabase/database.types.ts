@@ -270,6 +270,7 @@ export type Database = {
           id: string;
           published_at: string | null;
           published_by: Database["public"]["Enums"]["publisher"] | null;
+          published_by_user: string | null;
           scheduled_date: string;
           scheduled_time: string;
           status: Database["public"]["Enums"]["post_status"];
@@ -285,6 +286,7 @@ export type Database = {
           id?: string;
           published_at?: string | null;
           published_by?: Database["public"]["Enums"]["publisher"] | null;
+          published_by_user?: string | null;
           scheduled_date: string;
           scheduled_time: string;
           status?: Database["public"]["Enums"]["post_status"];
@@ -300,6 +302,7 @@ export type Database = {
           id?: string;
           published_at?: string | null;
           published_by?: Database["public"]["Enums"]["publisher"] | null;
+          published_by_user?: string | null;
           scheduled_date?: string;
           scheduled_time?: string;
           status?: Database["public"]["Enums"]["post_status"];
@@ -320,6 +323,13 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: "client_packages";
             referencedColumns: ["id", "client_id"];
+          },
+          {
+            foreignKeyName: "posts_published_by_user_fkey";
+            columns: ["published_by_user"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
           },
         ];
       };
@@ -355,6 +365,34 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      admin_set_post_status: {
+        Args: {
+          p_post_id: string;
+          p_status: Database["public"]["Enums"]["post_status"];
+        };
+        Returns: {
+          caption: string | null;
+          client_id: string;
+          client_package_id: string;
+          created_at: string;
+          format: Database["public"]["Enums"]["post_format"];
+          id: string;
+          published_at: string | null;
+          published_by: Database["public"]["Enums"]["publisher"] | null;
+          published_by_user: string | null;
+          scheduled_date: string;
+          scheduled_time: string;
+          status: Database["public"]["Enums"]["post_status"];
+          title: string;
+          updated_at: string;
+        };
+        SetofOptions: {
+          from: "*";
+          to: "posts";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
       assign_plan: {
         Args: {
           p_client_id: string;
@@ -414,6 +452,7 @@ export type Database = {
           id: string;
           published_at: string | null;
           published_by: Database["public"]["Enums"]["publisher"] | null;
+          published_by_user: string | null;
           scheduled_date: string;
           scheduled_time: string;
           status: Database["public"]["Enums"]["post_status"];
