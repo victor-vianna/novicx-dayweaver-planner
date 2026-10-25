@@ -1,5 +1,40 @@
 # Entrega Codex — Ciclo 1
 
+## X8 — Build para a Vercel
+
+- **Branch:** `codex/ciclo-3`
+- **Commits:** nenhum; o coordenador fará o commit do diff entregue.
+- **Mudanças:** `vite.config.ts` fixa `nitro.preset` em `vercel` para builds
+  externos ao Lovable. O wrapper dá precedência à configuração do ambiente
+  Lovable e mantém o preset `cloudflare-module` nesse fluxo. `vercel.json`
+  declara `npm run build` e desativa a detecção de framework; o Nitro escreve
+  diretamente o Build Output API v3, portanto não se configura
+  `outputDirectory`.
+- **Deploy na Vercel:** configurar somente `VITE_SUPABASE_URL`,
+  `VITE_SUPABASE_PUBLISHABLE_KEY` e `VITE_DATA_SOURCE` (`mock` ou `supabase`),
+  sem `service_role`. Usar o comando `npm run build`. A saída esperada é
+  `.vercel/output/config.json`, `.vercel/output/functions/__server.func/` e
+  `.vercel/output/static/`.
+- **Verificações:** builds mock e Supabase passaram com
+  `npx vite build --configLoader native`; ambos geraram o contrato Vercel, uma
+  função SSR e 25 arquivos estáticos. A função gerada respondeu `200` em `/` e
+  `404` em `/rota-inexistente-x8`. `npx tsc --noEmit` passou;
+  `npm run lint` passou sem erros e com os 8 avisos preexistentes de Fast
+  Refresh; Prettier passou nos dois arquivos de configuração. Um build de
+  compatibilidade com `LOVABLE_SANDBOX=1` confirmou o preset
+  `cloudflare-module` e gerou `dist/client`, `dist/server` e o `wrangler.json`.
+- **Limitações:** o comando literal `npm run build` não conseguiu carregar a
+  configuração nesta sandbox devido a `spawn EPERM`; o fallback nativo do Vite
+  executou o mesmo pipeline com sucesso. `.vercel/` não está no `.gitignore` e
+  a saída local foi removida após a verificação para não contaminar o diff.
+- **Riscos para o Lovable:** uma futura versão do wrapper pode alterar a
+  precedência do preset; por isso, o Claude deve manter no marco a verificação
+  do build com `LOVABLE_SANDBOX=1`. O build validado preservou o alvo Cloudflare
+  mesmo com o preset Vercel declarado no projeto.
+- **Revisão do Claude:** reexecutar `npm run build` fora da sandbox nos modos
+  mock e Supabase, confirmar a estrutura `.vercel/output` e avaliar a inclusão
+  de `.vercel/` no `.gitignore`, que está fora da faixa desta tarefa.
+
 ## X3 — Páginas 404 e de erro em pt-BR
 
 - **Branch:** `codex/ciclo-3`
