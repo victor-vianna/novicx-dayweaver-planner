@@ -154,7 +154,20 @@ export async function handleAdminUsers(
   }
 }
 
+/** Best-effort compensation: every step is tried even if an earlier one fails. */
+async function undo(steps: (() => Promise<void>)[]) {
+  for (const step of steps) {
+    try {
+      await step();
+    } catch {
+      // Left for the admin to retry; the response already reports the failure.
+    }
+  }
+}
+
 async function createAccount(body: Record<string, unknown>, deps: AdminUsersDeps) {
+  // Every field is validated before the first write.
+  const redirectTo = redirect(body);
   let client: ClientRow;
   let createdClient = false;
   const existingId = body["client_id"];
@@ -182,22 +195,24 @@ async function createAccount(body: Record<string, unknown>, deps: AdminUsersDeps
     }
     createdClient = true;
   }
-  const redirectTo = redirect(body);
+  const dropClient = async () => {
+    if (createdClient) await deps.deleteClient(client.id);
+  };
 
   let user: { id: string };
   try {
     user = await deps.createUser(client.email, client.display_name);
   } catch (err) {
-    if (createdClient) await deps.deleteClient(client.id);
+    await undo([dropClient]);
     if (statusOf(err) === 409) return fail(409, "Já existe uma conta com este e-mail.");
     throw err;
   }
 
   // The trigger links the confirmed user to the client with the same e-mail.
-  const linked = await deps.getClient(client.id);
+  // A failed check counts as "not linked": both writes are undone.
+  const linked = await deps.getClient(client.id).catch(() => null);
   if (linked?.user_id !== user.id) {
-    await deps.deleteUser(user.id);
-    if (createdClient) await deps.deleteClient(client.id);
+    await undo([() => deps.deleteUser(user.id), dropClient]);
     return fail(500, "Não foi possível vincular a conta à cliente.");
   }
 

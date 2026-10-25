@@ -256,6 +256,36 @@ describe("create_account", () => {
     expect(f.clients.has(NEW_ID)).toBe(false);
   });
 
+  // T2-R1-001
+  it("writes nothing when redirect_to is invalid", async () => {
+    const res = await call({
+      action: "create_account",
+      client,
+      redirect_to: "javascript:alert(1)",
+    });
+    expect(res.status).toBe(400);
+    expect(f.calls).not.toContain("insertClient");
+    expect(f.clients.has(NEW_ID)).toBe(false);
+  });
+
+  // T2-R1-002
+  it("undoes user and client when the link check itself fails", async () => {
+    f.noLink();
+    f.fail.getClient = new DepError("down", 500);
+    const res = await call({ action: "create_account", client });
+    expect(res.status).toBe(500);
+    expect(f.calls).toContain("deleteUser");
+    expect(f.clients.has(NEW_ID)).toBe(false);
+  });
+
+  it("still removes the client when removing the user fails", async () => {
+    f.noLink();
+    f.fail.deleteUser = new DepError("down", 500);
+    const res = await call({ action: "create_account", client });
+    expect(res.status).toBe(500);
+    expect(f.clients.has(NEW_ID)).toBe(false);
+  });
+
   it("still succeeds (link null) when the recovery link fails", async () => {
     f.fail.recoveryLink = new DepError("down", 500);
     const res = await call({ action: "create_account", client });
