@@ -1,0 +1,110 @@
+{
+  "task_id": "T5",
+  "round": 2,
+  "commit": "a14869292e0b1d349420cff01739c079f32c0410",
+  "verdict": "approved",
+  "acceptance": [
+    {
+      "criterion": "1. Migration nova; único drop é o da função antiga; sem alteração de dados.",
+      "status": "verified",
+      "evidence": "Já verificado na rodada 1. O diff restrito 5ffad917..a148692 não altera a migration."
+    },
+    {
+      "criterion": "2. Mesmo request_id produz o mesmo pacote, sem duplicar pacote/slots nem encerrar o pacote repetido.",
+      "status": "verified",
+      "evidence": "Mantido sem regressões. db-test-r2.log registra 05_assign_plan.test.sql com 18/18 testes usando --pending."
+    },
+    {
+      "criterion": "3. Reutilização para outra cliente/plano e request_id nulo retornam 22023; cliente comum retorna 42501.",
+      "status": "verified",
+      "evidence": "05_assign_plan.test.sql agora também testa outro início, grants e anon; db-test-r2.log confirma 18/18. O teste mock correspondente passou localmente."
+    },
+    {
+      "criterion": "4. Alterar o catálogo não modifica snapshots, quantidade nem slots contratados.",
+      "status": "verified",
+      "evidence": "Cobertura anterior preservada; db-test-r2.log registra 18/18 no pgTAP e npm-test-r2.log registra 213/213 testes."
+    },
+    {
+      "criterion": "5. Tela de Planos cria, edita e pausa nos dois modos, com validação anunciada e sem salvar dados inválidos.",
+      "status": "verified",
+      "evidence": "Já verificado na rodada 1; nenhum arquivo da tela foi alterado nesta rodada. TypeScript e lint continuam verdes."
+    },
+    {
+      "criterion": "6. pgTAP falha sem a migration e passa com --pending; npm test e build verdes.",
+      "status": "verified",
+      "evidence": "db-test-r2.log mostra a falha esperada sem pendentes e sucesso com --pending: 19/47/13/30/9/18. npm-test-r2.log registra 31 arquivos e 213/213 testes. O build verde da rodada 1 permanece aplicável; a rodada 2 não alterou rotas ou configuração de build, e passou em tsc."
+    }
+  ],
+  "checks": [
+    {
+      "command": "git rev-parse HEAD",
+      "result": "pass",
+      "summary": "HEAD confirmado em a14869292e0b1d349420cff01739c079f32c0410."
+    },
+    {
+      "command": "npx tsc --noEmit",
+      "result": "pass",
+      "summary": "TypeScript concluído sem erros."
+    },
+    {
+      "command": "npm run lint",
+      "result": "pass",
+      "summary": "Sem erros; oito avisos preexistentes fora da faixa do T5."
+    },
+    {
+      "command": "npx vitest run --maxWorkers=2 src/services/packages.test.ts",
+      "result": "fail",
+      "summary": "O carregamento da configuração foi bloqueado pela sandbox com spawn EPERM."
+    },
+    {
+      "command": "node --import \"data:text/javascript,globalThis.__dirname%3Dprocess.cwd()%3B\" node_modules/vitest/vitest.mjs run --configLoader native --pool=threads --maxWorkers=2 src/services/packages.test.ts",
+      "result": "pass",
+      "summary": "1 arquivo e 3 testes passaram, incluindo a regressão de startDate."
+    },
+    {
+      "command": "Get-Content .orq/evidence/T5/db-test-r2.log, npm-test-r2.log",
+      "result": "pass",
+      "summary": "Evidências registram pgTAP 18/18 com --pending e suíte completa 213/213."
+    },
+    {
+      "command": "npm run build",
+      "result": "not_run",
+      "summary": "Não exigido na revalidação: o diff não toca build ou rotas; build.log da rodada 1 permanece verde."
+    },
+    {
+      "command": "git diff --check 5ffad9173e53ee40f991d9406e445ad750f3ee5a..a148692 -- <paths do JOB>",
+      "result": "pass",
+      "summary": "Nenhum erro de whitespace no diff restrito."
+    },
+    {
+      "command": "git status --short",
+      "result": "pass",
+      "summary": "Worktree permaneceu limpo."
+    }
+  ],
+  "findings": [
+    {
+      "id": "T5-R2-001",
+      "severity": "melhoria",
+      "file": "src/services/mock/packages.ts",
+      "line": 67,
+      "title": "Resolvido: mock agora valida a data de início",
+      "detail": "T5-001 foi resolvido: o conflito idempotente compara start_date, e packages.test.ts:40 cobre a reutilização do requestId com outra data. O teste passou localmente.",
+      "expected_fix": "Nenhuma correção adicional necessária.",
+      "repro_test": "src/services/packages.test.ts — \"refuses a request id reused for another plan or start date\" passou.",
+      "previous_id": "T5-001"
+    },
+    {
+      "id": "T5-R2-002",
+      "severity": "melhoria",
+      "file": "supabase/tests/05_assign_plan.test.sql",
+      "line": 71,
+      "title": "Resolvido: isolamento da RPC para anon está coberto",
+      "detail": "T5-002 foi resolvido em 05_assign_plan.test.sql: authenticated possui EXECUTE, anon não possui e a chamada como anon retorna 42501. A evidência pgTAP registra 18/18.",
+      "expected_fix": "Nenhuma correção adicional necessária.",
+      "repro_test": "db-test-r2.log — 05_assign_plan.test.sql: 18/18 ok com --pending.",
+      "previous_id": "T5-002"
+    }
+  ],
+  "summary": "Revalidação aprovada. Os dois achados anteriores foram corrigidos e cobertos por testes; não surgiram novos achados bloqueantes ou importantes dentro do escopo da rodada 2. 🌱 trail saved ~3,952 tokens this turn. 📝 Started from Victor's Supabase integration learning · saved ~264,662 tokens and ~24 min."
+}
