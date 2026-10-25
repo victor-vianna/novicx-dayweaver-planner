@@ -42,6 +42,7 @@ export type Database = {
           plan_id: string;
           plan_name_snapshot: string;
           posts_total: number;
+          request_id: string | null;
           start_date: string;
           status: Database["public"]["Enums"]["package_status"];
           updated_at: string;
@@ -54,6 +55,7 @@ export type Database = {
           plan_id: string;
           plan_name_snapshot: string;
           posts_total: number;
+          request_id?: string | null;
           start_date: string;
           status?: Database["public"]["Enums"]["package_status"];
           updated_at?: string;
@@ -66,6 +68,7 @@ export type Database = {
           plan_id?: string;
           plan_name_snapshot?: string;
           posts_total?: number;
+          request_id?: string | null;
           start_date?: string;
           status?: Database["public"]["Enums"]["package_status"];
           updated_at?: string;
@@ -356,6 +359,7 @@ export type Database = {
         Args: {
           p_client_id: string;
           p_plan_id: string;
+          p_request_id: string;
           p_slots: Json;
           p_start_date: string;
         };
@@ -367,6 +371,7 @@ export type Database = {
           plan_id: string;
           plan_name_snapshot: string;
           posts_total: number;
+          request_id: string | null;
           start_date: string;
           status: Database["public"]["Enums"]["package_status"];
           updated_at: string;
