@@ -1,3 +1,4 @@
+// Clients in the demo (mock mode): same shape and rules as the Supabase service.
 import { clone, commit, delay, getDB, uid } from "@/mocks/store";
 import type { Client } from "@/types/domain";
 
@@ -17,13 +18,17 @@ export async function getClient(id: string): Promise<Client | null> {
   return clone(getDB().clients.find((c) => c.id === id) ?? null);
 }
 
+/** Like Supabase: the client is born without an account; access comes from createAccess. */
 export async function createClient(input: ClientInput): Promise<Client> {
   await delay();
-  const db = getDB();
-  const profileId = uid("u");
-  db.profiles.push({ id: profileId, role: "client", full_name: input.business_name });
-  const client: Client = { id: uid("c"), user_id: profileId, archived_at: null, ...input };
-  db.clients.push(client);
+  const client: Client = {
+    id: uid("c"),
+    user_id: "",
+    archived_at: null,
+    ...input,
+    email: input.email.trim().toLowerCase(),
+  };
+  getDB().clients.push(client);
   commit();
   return clone(client);
 }
