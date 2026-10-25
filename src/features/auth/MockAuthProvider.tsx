@@ -65,6 +65,7 @@ export function MockAuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const finish = useCallback((s: MockSession) => {
+    setSessionNotice(null);
     writeStored({ profileId: s.profile.id, previewClientId: null });
     setSession(s);
     setPreviewClientId(null);
@@ -83,6 +84,7 @@ export function MockAuthProvider({ children }: { children: ReactNode }) {
   );
 
   const signOut = useCallback(() => {
+    setSessionNotice(null);
     writeStored(null);
     setSession(null);
     setPreviewClientId(null);

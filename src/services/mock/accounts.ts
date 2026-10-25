@@ -53,6 +53,7 @@ export async function resetAccess(userId: string): Promise<string> {
   await delay();
   const profile = getDB().profiles.find((p) => p.id === userId);
   if (!profile) throw new Error("Conta não encontrada.");
+  if (profile.role !== "client") throw new Error("Só contas de clientes são gerenciadas aqui.");
   if (profile.blocked_at) throw new Error("Desbloqueie a conta antes de gerar um novo link.");
   return DEMO_LINK;
 }
@@ -64,7 +65,7 @@ export async function changeClientEmail(clientId: string, email: string): Promis
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(next)) throw new Error("E-mail inválido.");
   const client = db.clients.find((c) => c.id === clientId);
   if (!client) throw new Error("Cliente não encontrada.");
-  if (db.clients.some((c) => c.id !== clientId && c.email === next)) {
+  if (db.clients.some((c) => c.id !== clientId && c.email.trim().toLowerCase() === next)) {
     throw new Error("Já existe uma cliente com este e-mail.");
   }
   client.email = next;

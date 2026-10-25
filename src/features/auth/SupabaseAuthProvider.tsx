@@ -53,7 +53,9 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
       if (userId === loadedUser.current) return;
       try {
         const s = await auth.loadSession(userId);
-        if (active) apply(s);
+        if (!active) return;
+        setSessionNotice(null);
+        apply(s);
       } catch (reason) {
         await auth.signOut();
         if (!active) return;
@@ -83,6 +85,7 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
   const signIn = useCallback(
     async (email: string, password: string) => {
       const s = await auth.signInWithPassword(email, password);
+      setSessionNotice(null);
       writePreview(null);
       apply(s);
       return s;
@@ -95,6 +98,7 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signOut = useCallback(() => {
+    setSessionNotice(null);
     writePreview(null);
     apply(null);
     void auth.signOut();

@@ -38,10 +38,12 @@ describe("mock accounts", () => {
     expect((await signInWithPassword(email, password)).profile.id).toBe(profileId);
   });
 
+  // T3-R1-002
   it("never manages team accounts", async () => {
     await expect(accounts.setAccessBlocked(DEMO_ACCOUNTS.admin.profileId, true)).rejects.toThrow(
       /clientes/,
     );
+    await expect(accounts.resetAccess(DEMO_ACCOUNTS.admin.profileId)).rejects.toThrow(/clientes/);
   });
 
   it("creates access only for a client without one", async () => {
@@ -57,6 +59,11 @@ describe("mock accounts", () => {
     const other = getDB().clients.find((c) => c.id !== marina().id)!;
     await expect(accounts.changeClientEmail(marina().id, other.email)).rejects.toThrow(/Já existe/);
     await expect(accounts.changeClientEmail(marina().id, "nope")).rejects.toThrow(/inválido/);
+    // T3-R1-003: stored e-mails may keep their original case.
+    other.email = "Outra@Exemplo.com";
+    await expect(accounts.changeClientEmail(marina().id, "outra@exemplo.com")).rejects.toThrow(
+      /Já existe/,
+    );
     expect((await accounts.changeClientEmail(marina().id, " Nova@Exemplo.com ")).email).toBe(
       "nova@exemplo.com",
     );

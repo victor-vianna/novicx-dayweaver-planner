@@ -60,8 +60,8 @@ export function LoginScreen() {
     setError("");
     try {
       await signInAsDemo(role);
-    } catch {
-      setError("Não foi possível abrir a demonstração.");
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Não foi possível abrir a demonstração.");
     } finally {
       setBusy(null);
     }

@@ -18,7 +18,10 @@ export interface AuthContextValue {
   /** True after opening a password-recovery link (Supabase mode only). */
   passwordRecovery: boolean;
   completePasswordReset: (password: string) => Promise<void>;
-  /** Why the saved session ended (e.g. access suspended); shown on the login screen. */
+  /**
+   * Why the saved session ended (e.g. access suspended), shown once on the login
+   * screen; cleared by a successful sign-in or an explicit sign-out.
+   */
   sessionNotice: string | null;
 }
 
