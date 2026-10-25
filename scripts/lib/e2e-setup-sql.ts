@@ -52,7 +52,9 @@ begin
 
   insert into public.client_packages (id, client_id, plan_id, plan_name_snapshot, posts_total, start_date, end_date, status) values
     ('ee2e0000-0000-4000-8000-0000000000b1', 'ee2e0000-0000-4000-8000-0000000000c1', 'ee2e0000-0000-4000-8000-0000000000d1', '[E2E] Plano de teste', 4, today, today + 364, 'active'),
-    ('ee2e0000-0000-4000-8000-0000000000b2', 'ee2e0000-0000-4000-8000-0000000000c2', 'ee2e0000-0000-4000-8000-0000000000d1', '[E2E] Plano de teste', 4, today, today + 364, 'active')
+    ('ee2e0000-0000-4000-8000-0000000000b2', 'ee2e0000-0000-4000-8000-0000000000c2', 'ee2e0000-0000-4000-8000-0000000000d1', '[E2E] Plano de teste', 4, today, today + 364, 'active'),
+    -- F1: the full journey delivers a carousel to the lifecycle client.
+    ('ee2e0000-0000-4000-8000-0000000000b3', 'ee2e0000-0000-4000-8000-0000000000c3', 'ee2e0000-0000-4000-8000-0000000000d1', '[E2E] Plano de teste', 4, today, today + 364, 'active')
   on conflict (id) do nothing;
 end
 $e2e$;
