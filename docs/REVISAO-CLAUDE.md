@@ -1,3 +1,15 @@
+# Revisão Claude — Ciclo 3
+
+## X1 — `maxWorkers` do Vitest (`c15cee8`, `codex/ciclo-3`)
+
+- **Data:** 2026-10-25 · **Veredito:** aprovado, sem itens.
+- **Diff:** `vitest.config.ts` ganha `maxWorkers: 2`; nada removido (`include`, `setupFiles`, `environment`, aliases intactos). `docs/ENTREGA-CODEX.md` registra a entrega.
+- **Verificação do revisor:** `npm test` sem flags → 20 arquivos, 170/170, 17 s (`.orq/evidence/X1/npm-test.log`). Os 2 testes de subprocesso que falharam no Codex só falham dentro da sandbox.
+- **Observação:** o Codex não conseguiu commitar (sandbox sem escrita no `.git` compartilhado do worktree); o coordenador commitou o diff sem alterações.
+- **Melhoria opcional:** o título de `docs/ENTREGA-CODEX.md` ainda diz "Ciclo 1".
+
+---
+
 # Revisão Claude — Ciclo 1
 
 - **Data:** 2026-10-23
