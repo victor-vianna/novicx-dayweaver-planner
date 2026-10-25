@@ -3,6 +3,7 @@
 // and are the only posts that can be deleted.
 import { LoaderCircle, Save, Trash2 } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
+import { toast } from "sonner";
 
 import {
   AlertDialog,
@@ -86,7 +87,20 @@ export function PostEditor({
   );
   const remove = useDeliveryMutation(clientId, (id: string) => removePostMedia(id));
   const reorder = useDeliveryMutation(clientId, (ids: string[]) => reorderPostMedia(postId!, ids));
-  const discard = useDeliveryMutation(clientId, () => deletePost(postId!), "Rascunho excluído.");
+  const discard = useDeliveryMutation(clientId, () => deletePost(postId!));
+  const confirmDiscard = () =>
+    discard.mutate(undefined, {
+      onSuccess: ({ filesLeft }) => {
+        if (filesLeft) {
+          toast.warning(
+            "Rascunho excluído, mas algumas artes não foram removidas do armazenamento.",
+          );
+        } else {
+          toast.success("Rascunho excluído.");
+        }
+        onClose();
+      },
+    });
   const mediaBusy = add.isPending || replace.isPending || remove.isPending || reorder.isPending;
 
   if (!post || !form) return null;
@@ -232,11 +246,7 @@ export function PostEditor({
                   </AlertDialogDescription>
                   <AlertDialogFooter>
                     <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={() => discard.mutate(undefined, { onSuccess: onClose })}
-                    >
-                      Excluir
-                    </AlertDialogAction>
+                    <AlertDialogAction onClick={confirmDiscard}>Excluir</AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>

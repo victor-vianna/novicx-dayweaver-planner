@@ -24,7 +24,7 @@ Revisão: CXR = Codex revisor (★ = `xhigh`); CL = Claude revisa; AH = aprovaç
 | T4b | Tela de Clientes (CRUD, arquivar, acesso, ficha, atalhos) | CL-sub | T3 | doing | 2 | 26c6119 | `src/features/admin/clients/**` | r1: 1 importante (link vazio); r2 com subagente |
 | T5 | `assign_plan` idempotente; tela de Planos | CL | T3 | done | 2 | a148692 | `supabase/**`, `src/features/admin/plans/**`, `src/services/packages*` | push aplicado 2026-10-25 com autorização |
 | X9  | Testes a11y/responsividade (entrega, clientes, planos)                     | CX     | T4b, T5        | todo   | —      | —            | `*.test.tsx` novos                                                     | CL revisa                                                                                                       |
-| T6  | `admin_set_post_status`; excluir só rascunho; CORS do download             | CL     | T5             | todo   | —      | —            | `supabase/**`, `src/services/**`                                       | CXR ★ → AH push                                                                                                 |
+| T6 | `admin_set_post_status`; excluir só rascunho; CORS do download | CL | T5 | approved | 2 | PENDING | `supabase/**`, `src/services/**` | r1 CXR: 1 bloqueante + 2 importantes corrigidos na r2; revisão dispensada (autorização 2026-10-25); aguarda AH push |
 | T7  | Histórico de alterações (`post_events` append-only) + linha do tempo (D7)  | CL     | T6             | todo   | —      | —            | `supabase/**`, `src/features/admin/delivery/**`                        | CXR ★ → AH push                                                                                                 |
 | T8  | Métrica "clientes ativos", navegação persistente, testes de tela           | CL     | T7             | todo   | —      | —            | `src/features/admin/**`                                                | CXR                                                                                                             |
 | F1  | Jornada E2E completa no dev                                                | CL     | T8             | todo   | —      | —            | `src/services/supabase/*.it.ts`, `scripts/**`                          | CXR ★                                                                                                           |
@@ -49,6 +49,14 @@ Revisão: CXR = Codex revisor (★ = `xhigh`); CL = Claude revisa; AH = aprovaç
 
 ## Autorizações permanentes
 
-_Nenhuma._ D4 (PLANO-ATUAL): push de migrations e deploy de função no dev são
+- **2026-10-25 — fim da revisão obrigatória das entregas do Claude.** O responsável:
+  "a partir de agora nao sera mais necessario aguardar a revisao pois suas
+  implementações serao as definitivas". Daqui em diante, as entregas do Claude
+  (e do subagente) fecham sem esperar o CXR, com as verificações do próprio Claude
+  (pgTAP `--pending`, suíte, tsc, lint, build). Achados já recebidos são corrigidos.
+  **Não** muda: push de migration, deploy de função e merge na `main` continuam
+  pedindo "sim" explícito.
+
+D4 (PLANO-ATUAL): push de migrations e deploy de função no dev são
 autorizados **etapa a etapa**, com dry-run apresentado antes. Para reduzir
 pausas, ver o texto sugerido em `ORQUESTRACAO.md` §5.

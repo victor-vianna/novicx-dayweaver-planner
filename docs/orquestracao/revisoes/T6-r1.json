@@ -1,0 +1,131 @@
+{
+  "task_id": "T6",
+  "round": 1,
+  "commit": "596f52d3fac4e75ce53acfa6c550a406bfee517c",
+  "verdict": "changes_requested",
+  "acceptance": [
+    {
+      "criterion": "1. Migration nova, aditiva, sem alteração de dados.",
+      "status": "verified",
+      "evidence": "O diff adiciona 20261026100000_admin_post_status.sql; contém apenas ALTER/GRANT/REVOKE, funções e substituição da política posts_admin_delete. Não há DML nem remoção de dados."
+    },
+    {
+      "criterion": "2. Cliente e anon recebem 42501 na RPC; admin e cliente não escrevem status/published_* diretamente.",
+      "status": "failed",
+      "evidence": "Os testes cobrem RPC por cliente/anon e UPDATE direto, mas a migration revoga apenas UPDATE. O INSERT autenticado e posts_admin_insert continuam permitindo que um admin insira diretamente status='published' e campos de auditoria arbitrários, contornando as RPCs."
+    },
+    {
+      "criterion": "3. Regras da transição de status, arte, formato e auditoria.",
+      "status": "verified",
+      "evidence": "admin_set_post_status bloqueia liberação sem arte, deriva formato, usa now()/auth.uid(), preserva auditoria ao republicar e limpa ao voltar. db-test.log registra 06_post_status.test.sql 27/27."
+    },
+    {
+      "criterion": "4. Publicação pela cliente registra published_by_user.",
+      "status": "verified",
+      "evidence": "set_post_published grava auth.uid(); o pgTAP verifica o perfil da cliente e db-test.log registra sucesso."
+    },
+    {
+      "criterion": "5. Exclusão permitida apenas para rascunhos.",
+      "status": "verified",
+      "evidence": "A política restringe DELETE a admin e status draft; o pgTAP verifica admin em rascunho/publicado e cliente em publicado. Os testes direcionados também validaram o mock e a presença condicional do botão."
+    },
+    {
+      "criterion": "6. pgTAP diferencial e verificações TypeScript, lint, Vitest e build verdes.",
+      "status": "verified",
+      "evidence": "Evidências: com migration, suítes pgTAP 19/48/13/30/9/18/27; sem migration, 01 falha 47/48 e 06 aborta. npm-test.log registra 32 arquivos e 218 testes. Nesta revisão: tsc passou, lint terminou sem erros, 13 testes direcionados passaram pelo fallback e o build passou pelo carregador nativo."
+    },
+    {
+      "criterion": "7. E2E remoto após o push, incluindo CORS e recusas.",
+      "status": "not_verifiable",
+      "evidence": "A pasta de evidências não contém execução de test:supabase:remote posterior ao push. flow.it.ts contém as asserções, mas não há saída remota que demonstre CORS ou comportamento no ambiente atualizado."
+    }
+  ],
+  "checks": [
+    {
+      "command": "git rev-parse HEAD",
+      "result": "pass",
+      "summary": "HEAD corresponde exatamente a 596f52d3fac4e75ce53acfa6c550a406bfee517c."
+    },
+    {
+      "command": "git diff --check 8a682061bf5c1975c8575171ba7368ec428869f3..596f52d3fac4e75ce53acfa6c550a406bfee517c",
+      "result": "pass",
+      "summary": "Nenhum erro de whitespace no diff."
+    },
+    {
+      "command": "npx tsc --noEmit",
+      "result": "pass",
+      "summary": "Concluído com código 0 e sem diagnósticos."
+    },
+    {
+      "command": "npm run lint",
+      "result": "pass",
+      "summary": "Concluído com código 0; 8 avisos preexistentes de Fast Refresh e nenhum erro."
+    },
+    {
+      "command": "npx vitest run --maxWorkers=2 src/services/posts.test.ts src/features/admin/delivery/PostEditor.test.tsx",
+      "result": "fail",
+      "summary": "O carregador padrão não iniciou devido a spawn EPERM da sandbox."
+    },
+    {
+      "command": "node --import \"data:text/javascript,globalThis.__dirname%3Dprocess.cwd()%3B\" node_modules/vitest/vitest.mjs run --configLoader native --pool=threads --maxWorkers=2 src/services/posts.test.ts src/features/admin/delivery/PostEditor.test.tsx",
+      "result": "pass",
+      "summary": "2 arquivos e 13 testes passaram."
+    },
+    {
+      "command": "npm run build",
+      "result": "fail",
+      "summary": "O carregador padrão falhou por spawn EPERM e carregamento do binário nativo na sandbox."
+    },
+    {
+      "command": "node --import \"data:text/javascript,globalThis.__dirname%3Dprocess.cwd()%3B\" node_modules/vite/bin/vite.js build --configLoader native",
+      "result": "pass",
+      "summary": "Build cliente, SSR e Nitro/Vercel concluído com sucesso."
+    },
+    {
+      "command": "npm run db:test:remote -- --pending",
+      "result": "not_run",
+      "summary": "Comando remoto proibido no worktree de revisão; db-test.log fornecido registra todas as suítes verdes com a migration pendente."
+    },
+    {
+      "command": "npm run test:supabase:remote",
+      "result": "not_run",
+      "summary": "Comando remoto proibido e nenhuma evidência de execução posterior ao push foi fornecida."
+    }
+  ],
+  "findings": [
+    {
+      "id": "T6-R1-001",
+      "severity": "bloqueante",
+      "file": "supabase/migrations/20261026100000_admin_post_status.sql",
+      "line": 16,
+      "title": "Admin ainda pode criar uma publicação diretamente como publicada",
+      "detail": "A migration revoga somente UPDATE. O papel authenticated conserva INSERT, e posts_admin_insert permite inserções quando is_admin() é verdadeiro. Assim, um admin pode inserir status='published', sem arte e com published_at/published_by/published_by_user arbitrários ou nulos. Isso contorna admin_set_post_status, a data do servidor e a derivação do formato, falhando o critério 2 e o objetivo central da tarefa.",
+      "expected_fix": "Impedir INSERT direto nas colunas status e published_* — por privilégio de colunas, trigger ou RPC segura — e adaptar createPost para usar apenas campos permitidos/default draft. Adicionar pgTAP que prove 42501 ao tentar inserir um post já publicado diretamente.",
+      "repro_test": "select throws_ok($$insert into public.posts (id, client_id, client_package_id, title, scheduled_date, scheduled_time, status, published_at, published_by, published_by_user) values ('aaaaaaaa-0000-4000-8000-0000000000f4', 'aaaaaaaa-0000-4000-8000-00000000000c', 'aaaaaaaa-0000-4000-8000-0000000000b0', 'Publicado forjado', '2026-10-10', '10:00', 'published', '2020-01-01T00:00:00Z', 'client', 'dddddddd-0000-4000-8000-000000000001')$$, '42501', null, 'admin não cria publicado diretamente');",
+      "previous_id": ""
+    },
+    {
+      "id": "T6-R1-002",
+      "severity": "importante",
+      "file": "supabase/tests/06_post_status.test.sql",
+      "line": 46,
+      "title": "Matriz de isolamento da nova RPC e política de exclusão está incompleta",
+      "detail": "A suíte exercita cliente ativo, admin ativo e anon para a RPC, mas não um admin bloqueado. A política nova de DELETE também não possui casos explícitos para admin bloqueado e anon, nem uma verificação dedicada de cliente contra rascunho próprio/de outra cliente. Uma regressão na integração com is_admin/current_client_id pode passar sem ser detectada.",
+      "expected_fix": "Adicionar pgTAP para admin bloqueado na admin_set_post_status e no DELETE, além de casos explícitos de anon e clientes tentando excluir rascunhos próprios/de outra cliente. Confirmar que as linhas permanecem após cada tentativa negada.",
+      "repro_test": "reset role; update public.profiles set blocked_at = now() where id = 'dddddddd-0000-4000-8000-000000000001'; select pg_temp.login('dddddddd-0000-4000-8000-000000000001'); select throws_ok($$select public.admin_set_post_status('aaaaaaaa-0000-4000-8000-0000000000f1', 'ready')$$, '42501', null, 'admin bloqueado não altera status'); delete from public.posts where id = 'aaaaaaaa-0000-4000-8000-0000000000f3'; reset role; select is((select count(*)::int from public.posts where id = 'aaaaaaaa-0000-4000-8000-0000000000f3'), 1, 'admin bloqueado não exclui rascunho');",
+      "previous_id": ""
+    },
+    {
+      "id": "T6-R1-003",
+      "severity": "importante",
+      "file": "src/services/supabase/posts.ts",
+      "line": 79,
+      "title": "Falha ao remover arquivos é ignorada após excluir o post",
+      "detail": "Supabase Storage retorna falhas no campo error; remove(paths) não necessariamente lança exceção. O serviço ignora esse resultado e conclui com sucesso, fazendo a interface fechar e anunciar exclusão enquanto os objetos permanecem órfãos e sem referência para nova tentativa.",
+      "expected_fix": "Inspecionar o resultado de storage.remove e implementar tratamento recuperável para falhas de limpeza, sem reportar sucesso falso. Acrescentar teste do serviço em que remove retorna error e comprovar o comportamento esperado.",
+      "repro_test": "Mocke db().storage.from(MEDIA_BUCKET).remove para resolver { data: null, error: new Error('storage indisponível') }; após deletePost(draftId), a promessa resolve hoje, quando deveria sinalizar ou registrar uma limpeza pendente.",
+      "previous_id": ""
+    }
+  ],
+  "summary": "Alterações de RPC, RLS, interface e testes estão majoritariamente coerentes, mas o INSERT direto por admin ainda permite fabricar publicações publicadas fora da operação autorizada. Também faltam cobertura de isolamento para conta bloqueada e tratamento da falha de remoção no Storage. O E2E remoto pós-push não é verificável. 🌱 trail saved ~23,436 tokens this turn (4 calls)."
+}

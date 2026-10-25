@@ -78,7 +78,7 @@ export async function updatePost(id: string, patch: PostPatch): Promise<PostWith
 }
 
 /** Admin. Only drafts can be deleted; their arts go with them. */
-export async function deletePost(id: string): Promise<void> {
+export async function deletePost(id: string): Promise<{ filesLeft: number }> {
   await delay();
   const db = getDB();
   const post = db.posts.find((p) => p.id === id);
@@ -87,6 +87,7 @@ export async function deletePost(id: string): Promise<void> {
   db.posts = db.posts.filter((p) => p.id !== id);
   db.media = db.media.filter((m) => m.post_id !== id);
   commit();
+  return { filesLeft: 0 };
 }
 
 function postForActor(id: string, actor: Actor) {

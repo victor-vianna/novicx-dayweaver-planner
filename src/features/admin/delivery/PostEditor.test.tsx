@@ -4,7 +4,10 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { toast } from "sonner";
+
 import { getDB, resetDB } from "@/mocks/store";
+import * as posts from "@/services/posts";
 import type { PostWithMedia } from "@/types/domain";
 
 import { PostEditor } from "./PostEditor";
@@ -13,7 +16,7 @@ vi.mock("@/mocks/store", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/mocks/store")>()),
   delay: async () => {},
 }));
-vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn(), warning: vi.fn() } }));
 
 function renderEditor(status: "draft" | "ready", onClose = vi.fn()) {
   const row = getDB().posts.find((p) => p.status === status)!;
@@ -30,7 +33,12 @@ function renderEditor(status: "draft" | "ready", onClose = vi.fn()) {
   return { post, onClose };
 }
 
-beforeEach(() => resetDB());
+beforeEach(() => {
+  resetDB();
+  vi.restoreAllMocks();
+  vi.mocked(toast.success).mockClear();
+  vi.mocked(toast.warning).mockClear();
+});
 
 describe("PostEditor", () => {
   it("offers no delete for a released post", () => {
@@ -45,5 +53,17 @@ describe("PostEditor", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Excluir" }));
     await waitFor(() => expect(onClose).toHaveBeenCalled());
     expect(getDB().posts.some((p) => p.id === post.id)).toBe(false);
+    expect(toast.success).toHaveBeenCalledWith("Rascunho excluído.");
+  });
+
+  // T6-R1-003: files left in Storage are reported, not hidden behind success.
+  it("warns when some arts could not be removed", async () => {
+    vi.spyOn(posts, "deletePost").mockResolvedValue({ filesLeft: 1 });
+    const { onClose } = renderEditor("draft");
+    fireEvent.click(screen.getByRole("button", { name: /Excluir rascunho/ }));
+    fireEvent.click(await screen.findByRole("button", { name: "Excluir" }));
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+    expect(toast.warning).toHaveBeenCalledWith(expect.stringMatching(/não foram removidas/));
+    expect(toast.success).not.toHaveBeenCalled();
   });
 });

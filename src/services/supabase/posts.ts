@@ -67,16 +67,28 @@ export async function updatePost(id: string, patch: PostPatch): Promise<PostWith
   return requirePost(id);
 }
 
-/** Admin. Only drafts can be deleted (RLS); their files are removed after. */
-export async function deletePost(id: string): Promise<void> {
+/**
+ * Admin. Only drafts can be deleted (RLS); their files are removed after the
+ * row. Returns how many files could not be removed, so the UI never claims a
+ * clean delete that left files behind (they stay invisible to clients: no
+ * post_media row points to them).
+ */
+export async function deletePost(id: string): Promise<{ filesLeft: number }> {
   const post = await requirePost(id);
   if (post.status !== "draft") throw new Error(DRAFT_ONLY);
   const { data, error } = await db().from("posts").delete().eq("id", id).select("id");
   if (error) fail(error, "Não foi possível excluir a publicação.");
   if (!data?.length) throw new Error(DRAFT_ONLY);
-  const paths = post.media.map((m) => m.storage_path);
-  // A leftover file is invisible to clients (no post_media row points to it).
-  if (paths.length) await db().storage.from(MEDIA_BUCKET).remove(paths);
+  return { filesLeft: await removeFiles(post.media.map((m) => m.storage_path)) };
+}
+
+/** Removes files; returns how many were not removed (error or denied). */
+export async function removeFiles(paths: string[]): Promise<number> {
+  if (!paths.length) return 0;
+  // Storage reports failures in `error`, and a denied remove as a short list.
+  const { data, error } = await db().storage.from(MEDIA_BUCKET).remove(paths);
+  if (error) return paths.length;
+  return paths.length - (data?.length ?? 0);
 }
 
 async function setPublished(id: string, published: boolean) {
@@ -122,7 +134,6 @@ export async function createPost(input: NewPostInput): Promise<PostWithMedia> {
       title: input.title,
       scheduled_date: input.scheduledDate,
       scheduled_time: input.scheduledTime,
-      status: "draft",
     })
     .select("id")
     .single();

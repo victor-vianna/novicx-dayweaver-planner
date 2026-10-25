@@ -4,7 +4,8 @@
 --   (derivado da quantidade de artes) numa transação. Liberar exige arte.
 -- · set_post_published passa a gravar o responsável.
 -- · Escrita direta de status/campos de publicação deixa de existir (privilégio
---   por coluna); título, legenda, data, horário e formato seguem diretos.
+--   por coluna, no INSERT e no UPDATE): post novo nasce rascunho pelo default;
+--   título, legenda, data, horário e formato seguem diretos.
 -- · Exclusão de publicação: só rascunho.
 
 alter table public.posts
@@ -13,7 +14,9 @@ alter table public.posts
   add constraint posts_published_by_user_only_published
   check (status = 'published' or published_by_user is null);
 
-revoke update on table public.posts from anon, authenticated;
+revoke insert, update on table public.posts from anon, authenticated;
+grant insert (client_id, client_package_id, title, caption, scheduled_date, scheduled_time, format)
+  on table public.posts to authenticated;
 grant update (title, caption, scheduled_date, scheduled_time, format)
   on table public.posts to authenticated;
 
