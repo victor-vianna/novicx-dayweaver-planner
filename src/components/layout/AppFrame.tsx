@@ -1,10 +1,12 @@
 import { Eye, Home, LogOut, Menu, X } from "lucide-react";
-import type { ReactNode } from "react";
+import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
 
 import { Wordmark } from "@/components/brand/Wordmark";
 import { useAuth } from "@/features/auth/useAuth";
 import { initials } from "@/lib/initials";
 import { cn } from "@/lib/utils";
+
+const DESKTOP_MENU_QUERY = "(min-width: 64rem)";
 
 export function AppFrame({
   name,
@@ -28,6 +30,50 @@ export function AppFrame({
   children: ReactNode;
 }) {
   const { signOut, stopPreview } = useAuth();
+  const [isMobileMenu, setIsMobileMenu] = useState(false);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const menuPanelRef = useRef<HTMLElement>(null);
+  const restoreMenuFocus = useRef(false);
+  const menuPanelId = useId();
+  const mobileMenuClosed = isMobileMenu && !menuOpen;
+
+  const closeMenu = useCallback(() => {
+    restoreMenuFocus.current = isMobileMenu;
+    onMenuOpen(false);
+  }, [isMobileMenu, onMenuOpen]);
+
+  useEffect(() => {
+    const desktopQuery = window.matchMedia(DESKTOP_MENU_QUERY);
+    const updateMenuMode = () => setIsMobileMenu(!desktopQuery.matches);
+
+    desktopQuery.addEventListener("change", updateMenuMode);
+    updateMenuMode();
+    return () => desktopQuery.removeEventListener("change", updateMenuMode);
+  }, []);
+
+  useEffect(() => {
+    if (isMobileMenu && menuOpen) menuPanelRef.current?.focus();
+  }, [isMobileMenu, menuOpen]);
+
+  useEffect(() => {
+    if (!menuOpen && restoreMenuFocus.current) {
+      restoreMenuFocus.current = false;
+      menuButtonRef.current?.focus();
+    }
+  }, [menuOpen]);
+
+  useEffect(() => {
+    if (!isMobileMenu || !menuOpen) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      closeMenu();
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [closeMenu, isMobileMenu, menuOpen]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -52,10 +98,13 @@ export function AppFrame({
       >
         <Wordmark variant="inline" />
         <button
+          ref={menuButtonRef}
           type="button"
           className="pressable grid h-10 w-10 place-items-center rounded-xl bg-surface"
-          onClick={() => onMenuOpen(!menuOpen)}
-          aria-label="Abrir menu"
+          onClick={() => (menuOpen ? closeMenu() : onMenuOpen(true))}
+          aria-label={menuOpen ? "Fechar menu" : "Abrir menu"}
+          aria-expanded={menuOpen}
+          aria-controls={menuPanelId}
         >
           {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </button>
@@ -65,11 +114,17 @@ export function AppFrame({
         <button
           type="button"
           className="fixed inset-0 z-40 bg-black/55 lg:hidden"
-          onClick={() => onMenuOpen(false)}
+          onClick={closeMenu}
           aria-label="Fechar menu"
         />
       )}
       <aside
+        ref={menuPanelRef}
+        id={menuPanelId}
+        tabIndex={-1}
+        inert={mobileMenuClosed}
+        aria-hidden={mobileMenuClosed || undefined}
+        aria-label="Menu principal"
         className={cn(
           "fixed bottom-0 left-0 top-0 z-50 flex w-72 flex-col border-r border-sidebar-border bg-sidebar p-5 transition-transform duration-200 lg:translate-x-0",
           menuOpen ? "translate-x-0" : "-translate-x-full",
@@ -80,7 +135,8 @@ export function AppFrame({
           <button
             type="button"
             className="grid h-9 w-9 place-items-center rounded-lg hover:bg-sidebar-accent lg:hidden"
-            onClick={() => onMenuOpen(false)}
+            onClick={closeMenu}
+            aria-label="Fechar menu lateral"
           >
             <X className="h-4 w-4" />
           </button>
@@ -95,7 +151,7 @@ export function AppFrame({
                 type="button"
                 onClick={() => {
                   onNavigate(item.id);
-                  onMenuOpen(false);
+                  closeMenu();
                 }}
                 className={cn(
                   "pressable flex h-12 w-full items-center gap-3 rounded-xl px-3.5 text-left text-sm font-semibold",
