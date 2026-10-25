@@ -1,0 +1,67 @@
+{
+  "task_id": "X8",
+  "round": 1,
+  "status": "delivered",
+  "branch": "codex/ciclo-3",
+  "commits": [],
+  "files_changed": [
+    "vite.config.ts",
+    "vercel.json",
+    "docs/ENTREGA-CODEX.md"
+  ],
+  "checks": [
+    {
+      "command": "npm run build (VITE_DATA_SOURCE=mock)",
+      "result": "fail",
+      "summary": "A sandbox bloqueou o carregador padrão do Vite com spawn EPERM."
+    },
+    {
+      "command": "npx vite build --configLoader native (VITE_DATA_SOURCE=mock)",
+      "result": "pass",
+      "summary": "Gerou config.json, função SSR e 25 arquivos estáticos em .vercel/output."
+    },
+    {
+      "command": "npx vite build --configLoader native (VITE_DATA_SOURCE=supabase)",
+      "result": "pass",
+      "summary": "Build cliente, SSR e Nitro/Vercel concluído."
+    },
+    {
+      "command": "execução direta de .vercel/output/functions/__server.func/index.mjs",
+      "result": "pass",
+      "summary": "Retornou 200 em / e 404 em /rota-inexistente-x8, ambos HTML."
+    },
+    {
+      "command": "npx vite build --configLoader native (LOVABLE_SANDBOX=1, LOVABLE_NITRO_PRESET=cloudflare-module)",
+      "result": "pass",
+      "summary": "Preservou o preset cloudflare-module e gerou as saídas Lovable/Cloudflare."
+    },
+    {
+      "command": "npx tsc --noEmit",
+      "result": "pass",
+      "summary": "Concluído sem erros."
+    },
+    {
+      "command": "npm run lint",
+      "result": "pass",
+      "summary": "Concluído sem erros; manteve 8 avisos preexistentes de Fast Refresh."
+    },
+    {
+      "command": "npx prettier --check vite.config.ts vercel.json docs/ENTREGA-CODEX.md",
+      "result": "pass",
+      "summary": "Todos os arquivos seguem a formatação esperada."
+    },
+    {
+      "command": "git diff --check",
+      "result": "pass",
+      "summary": "Nenhum erro de whitespace."
+    }
+  ],
+  "out_of_scope_requests": [
+    "Adicionar `.vercel/` ao `.gitignore`; esse arquivo não pertence à faixa liberada para X8."
+  ],
+  "limitations": [
+    "O comando literal `npm run build` não pôde ser validado nesta sandbox por `spawn EPERM`; o pipeline equivalente com `--configLoader native` passou nos modos mock e Supabase.",
+    "Nenhum deploy real ou Vercel CLI foi executado, conforme o brief."
+  ],
+  "summary": "Configurado o preset Nitro/Vercel com preservação comprovada do build Cloudflare do Lovable, documentado o deploy e validado SSR em raiz/404. Artefatos gerados foram retirados do worktree. Trail economizou aproximadamente 10.775 tokens nesta execução."
+}
