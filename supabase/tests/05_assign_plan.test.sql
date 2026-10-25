@@ -2,7 +2,7 @@
 -- altera o pacote contratado (nome, quantidade e slots ficam como estavam).
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(14);
+select plan(18);
 
 insert into public.clients (id, display_name, business_name, email) values
   ('aaaaaaaa-0000-4000-8000-00000000000c', 'A', 'Cliente A', 'a@teste.dev'),
@@ -49,6 +49,8 @@ select throws_ok($$select pg_temp.assign('bbbbbbbb-0000-4000-8000-00000000000c',
 select throws_ok($$select pg_temp.assign('aaaaaaaa-0000-4000-8000-00000000000c', 'eeeeeeee-0000-4000-8000-000000000002',
   '2026-11-01', '11111111-0000-4000-8000-000000000001')$$, '22023', null, 'request_id reutilizado para outro plano é recusado');
 select throws_ok($$select pg_temp.assign('aaaaaaaa-0000-4000-8000-00000000000c', 'eeeeeeee-0000-4000-8000-000000000001',
+  '2026-12-01', '11111111-0000-4000-8000-000000000001')$$, '22023', null, 'request_id reutilizado com outro início é recusado');
+select throws_ok($$select pg_temp.assign('aaaaaaaa-0000-4000-8000-00000000000c', 'eeeeeeee-0000-4000-8000-000000000001',
   '2026-11-01', null)$$, '22023', null, 'request_id nulo é recusado');
 
 -- Catálogo muda depois da contratação (como admin, pela política do catálogo).
@@ -66,5 +68,16 @@ select pg_temp.login('aaaaaaaa-0000-4000-8000-000000000001');
 select throws_ok($$select pg_temp.assign('aaaaaaaa-0000-4000-8000-00000000000c', 'eeeeeeee-0000-4000-8000-000000000001',
   '2026-12-01', gen_random_uuid())$$, '42501', null, 'cliente não contrata plano');
 
+-- T5-002: grants da nova assinatura.
+reset role;
+select ok(has_function_privilege('authenticated', 'public.assign_plan(uuid, uuid, date, jsonb, uuid)', 'EXECUTE'),
+  'authenticated executa a nova assign_plan');
+select ok(not has_function_privilege('anon', 'public.assign_plan(uuid, uuid, date, jsonb, uuid)', 'EXECUTE'),
+  'anon não executa a nova assign_plan');
+set local role anon;
+select throws_ok($$select public.assign_plan('aaaaaaaa-0000-4000-8000-00000000000c', 'eeeeeeee-0000-4000-8000-000000000001',
+  '2026-12-01', '[]', gen_random_uuid())$$, '42501', null, 'anon recebe 42501 ao contratar');
+
+reset role;
 select * from finish();
 rollback;

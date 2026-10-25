@@ -34,9 +34,13 @@ describe("assignPlan (mock)", () => {
     );
   });
 
-  it("refuses a request id reused for another plan", async () => {
+  it("refuses a request id reused for another plan or start date", async () => {
     await assignPlan(input("r-2"));
     await expect(assignPlan({ ...input("r-2"), planId: "plan-cd8" })).rejects.toThrow(/já usado/);
+    // T5-001: same client and plan, another start date.
+    await expect(assignPlan({ ...input("r-2"), startDate: "2026-12-01" })).rejects.toThrow(
+      /já usado/,
+    );
   });
 
   it("keeps the contracted package when the catalog changes", async () => {

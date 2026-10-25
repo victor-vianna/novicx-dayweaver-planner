@@ -61,7 +61,11 @@ export async function assignPlan({
   const db = getDB();
   const previous = db.packages.find((p) => p.id === assigned.get(requestId));
   if (previous) {
-    if (previous.client_id !== clientId || previous.plan_id !== planId) {
+    if (
+      previous.client_id !== clientId ||
+      previous.plan_id !== planId ||
+      previous.start_date !== startDate
+    ) {
       throw new Error("Identificador da contratação já usado em outra contratação");
     }
     return clone(previous);
