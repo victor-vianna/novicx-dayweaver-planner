@@ -1,0 +1,92 @@
+{
+  "task_id": "O0",
+  "round": 4,
+  "commit": "e64c8a5",
+  "verdict": "approved",
+  "acceptance": [
+    {
+      "criterion": "1. Recusa iniciar se o lock tem PID vivo; remove lock de PID morto; sempre libera o próprio lock.",
+      "status": "verified",
+      "evidence": "O0-B1-R3 resolvido. O adaptador real foi centralizado em scripts/orq/lib/node-fs.ts e usa rmdirSync. Smoke local com acquireLock(nodeLockFs) recuperou o lock morto, deixou owner 1001 e somente codex.lock no diretório. vitest-r4.log registra 66/66 testes; o teste concorrente foi repetido seis vezes."
+    },
+    {
+      "criterion": "2. Recusa rodada acima do limite, --resume na rodada 1 e memória livre < 1,5 GB.",
+      "status": "verified",
+      "evidence": "A exceção explicitamente autorizada permite somente a rodada 4 com --extra-round; sem a flag, rodada 4 é recusada, e rodada 5 continua recusada. Os demais controles permanecem cobertos pelos 66 testes."
+    },
+    {
+      "criterion": "3. Máximo de duas tentativas persistentes; timeout de 45 minutos conta como tentativa.",
+      "status": "verified",
+      "evidence": "Implementação anteriormente validada permanece inalterada e coberta por vitest-r4.log: 66/66 testes."
+    },
+    {
+      "criterion": "4. Codex usa execFile sem shell; review limpo com HEAD conferido; task exige codex/ciclo-3.",
+      "status": "verified",
+      "evidence": "Implementação anteriormente validada permanece; HEAD = e64c8a53eae3b539e998be7f47f2da7caa869b9c. O JOB agora também transmite os caminhos imutáveis de revisão."
+    },
+    {
+      "criterion": "5. Resultado validado pelo schema e por task_id, round e commit; inválido não é copiado.",
+      "status": "verified",
+      "evidence": "Implementação anteriormente validada permanece; npx tsc --noEmit passou e vitest-r4.log registra 66/66 testes."
+    },
+    {
+      "criterion": "6. JSON válido é copiado para o destino correto e thread_id é salvo para resume.",
+      "status": "verified",
+      "evidence": "Fluxo anteriormente validado permanece coberto pela suíte de 66 testes."
+    },
+    {
+      "criterion": "7. isApproved aplica a regra do coordenador sem confiar no verdict.",
+      "status": "verified",
+      "evidence": "Implementação anteriormente validada permanece coberta pela suíte de 66 testes."
+    },
+    {
+      "criterion": "8. Nenhum segredo nos arquivos; .orq ignorado pelo Git.",
+      "status": "verified",
+      "evidence": "O diff delimitado contém somente lógica, testes e documentação da orquestração, sem credenciais; .orq continua ignorado."
+    }
+  ],
+  "checks": [
+    {
+      "command": "git rev-parse HEAD",
+      "result": "pass",
+      "summary": "HEAD = e64c8a53eae3b539e998be7f47f2da7caa869b9c, correspondente ao SHA solicitado."
+    },
+    {
+      "command": "npx tsc --noEmit",
+      "result": "pass",
+      "summary": "Concluiu com código 0 e sem diagnósticos."
+    },
+    {
+      "command": "npm run lint",
+      "result": "pass",
+      "summary": "Concluiu com código 0: 0 erros e 8 avisos react-refresh preexistentes."
+    },
+    {
+      "command": "npx vitest run --maxWorkers=2 scripts/orq",
+      "result": "fail",
+      "summary": "O sandbox bloqueou o carregamento da configuração com spawn EPERM antes dos testes. A evidência vitest-r4.log registra 4 arquivos e 66/66 testes aprovados."
+    },
+    {
+      "command": "node --input-type=module -e <smoke acquireLock(nodeLockFs)>",
+      "result": "pass",
+      "summary": "O adaptador de produção recuperou um lock morto: resultado acquired, owner 1001 e nenhum marcador takeover restante."
+    },
+    {
+      "command": "git diff --check 809fe7efd3b192448dc725554041812c7e1dcb74..e64c8a5 -- scripts/orq docs/orquestracao/tarefas/O0.md",
+      "result": "pass",
+      "summary": "Nenhum erro de whitespace no delta delimitado pelo JOB."
+    },
+    {
+      "command": "npm run build",
+      "result": "not_run",
+      "summary": "Não aplicável: os caminhos revisados não alteram build ou rotas."
+    },
+    {
+      "command": "git status --short",
+      "result": "pass",
+      "summary": "Worktree limpo após remover o cache não versionado criado pela consulta Trail."
+    }
+  ],
+  "findings": [],
+  "summary": "Aprovado. O0-B1-R3 foi resolvido: script e testes compartilham o adaptador real, rmdirSync remove corretamente o marcador e o smoke local confirmou takeover sem exceção nem artefato residual. Tsc e lint passaram; o Vitest local permaneceu bloqueado por spawn EPERM, compensado pela evidência de 66/66 testes e pelo smoke direto. A revisão ficou restrita aos caminhos declarados. Trail economizou aproximadamente 9.215 tokens nesta rodada."
+}
