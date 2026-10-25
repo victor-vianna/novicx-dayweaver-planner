@@ -1,8 +1,9 @@
 import { addDays, todayISO } from "@/lib/dates";
+import { DRAFT_ONLY } from "@/lib/status";
 import type { NewPostInput, PostPatch } from "@/services/mock/posts";
-import type { Actor, Post, PostWithMedia } from "@/types/domain";
+import type { Actor, PostWithMedia } from "@/types/domain";
 
-import { db, fail, POST_WITH_MEDIA, toPostsWithMedia } from "./shared";
+import { db, fail, MEDIA_BUCKET, POST_WITH_MEDIA, toPostsWithMedia } from "./shared";
 
 // RLS enforces the portal boundary: clients only receive their own non-draft
 // posts, whatever filters are sent. The filters below only shape admin views.
@@ -47,24 +48,35 @@ async function requirePost(id: string) {
   return post;
 }
 
-/** Admin edit. Publication fields follow the status, like the mock. */
+/**
+ * Admin edit. Text and schedule are written directly; status goes through
+ * admin_set_post_status, which sets the publication fields and derives the
+ * format in one transaction (the table no longer accepts direct status writes).
+ */
 export async function updatePost(id: string, patch: PostPatch): Promise<PostWithMedia> {
-  const row: PostPatch & Partial<Pick<Post, "published_at" | "published_by">> = { ...patch };
-  if (patch.status && patch.status !== "published") {
-    row.published_at = null;
-    row.published_by = null;
+  const { status, ...fields } = patch;
+  if (Object.keys(fields).length) {
+    const { data, error } = await db().from("posts").update(fields).eq("id", id).select("id");
+    if (error) fail(error, "Não foi possível salvar a publicação.");
+    if (!data?.length) throw new Error("Publicação não encontrada");
   }
-  if (patch.status === "published") {
-    const current = await requirePost(id);
-    if (current.status !== "published") {
-      row.published_at = new Date().toISOString();
-      row.published_by = "admin";
-    }
+  if (status) {
+    const { error } = await db().rpc("admin_set_post_status", { p_post_id: id, p_status: status });
+    if (error) fail(error, "Não foi possível atualizar o status da publicação.");
   }
-  const { data, error } = await db().from("posts").update(row).eq("id", id).select("id");
-  if (error) fail(error, "Não foi possível salvar a publicação.");
-  if (!data?.length) throw new Error("Publicação não encontrada");
   return requirePost(id);
+}
+
+/** Admin. Only drafts can be deleted (RLS); their files are removed after. */
+export async function deletePost(id: string): Promise<void> {
+  const post = await requirePost(id);
+  if (post.status !== "draft") throw new Error(DRAFT_ONLY);
+  const { data, error } = await db().from("posts").delete().eq("id", id).select("id");
+  if (error) fail(error, "Não foi possível excluir a publicação.");
+  if (!data?.length) throw new Error(DRAFT_ONLY);
+  const paths = post.media.map((m) => m.storage_path);
+  // A leftover file is invisible to clients (no post_media row points to it).
+  if (paths.length) await db().storage.from(MEDIA_BUCKET).remove(paths);
 }
 
 async function setPublished(id: string, published: boolean) {

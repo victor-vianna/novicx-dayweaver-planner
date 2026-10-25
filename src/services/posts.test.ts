@@ -1,11 +1,25 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { resetDB } from "@/mocks/store";
-import { getPost, listPosts, markPostPublished, unmarkPostPublished } from "@/services/posts";
+import { DRAFT_ONLY, NEEDS_ART } from "@/lib/status";
+import { getDB, resetDB } from "@/mocks/store";
+import {
+  deletePost,
+  getPost,
+  listPosts,
+  markPostPublished,
+  unmarkPostPublished,
+  updatePost,
+} from "@/services/posts";
 
 async function settle<T>(promise: Promise<T>) {
   await vi.runAllTimersAsync();
   return promise;
+}
+
+async function settleRejection(promise: Promise<unknown>, message: string) {
+  const assertion = expect(promise).rejects.toThrow(message);
+  await vi.runAllTimersAsync();
+  await assertion;
 }
 
 describe("post service authorization", () => {
@@ -82,5 +96,58 @@ describe("post service authorization", () => {
 
     await vi.runAllTimersAsync();
     await assertion;
+  });
+
+  // T6: same rules as admin_set_post_status and the draft-only delete policy.
+  describe("admin status and delete", () => {
+    // The seed has no draft with art: give one two arts.
+    const draftWithArt = () => {
+      const post = draftWithoutArt();
+      for (const position of [0, 1]) {
+        getDB().media.push({
+          id: `m-test-${position}`,
+          post_id: post.id,
+          storage_path: `clients/${post.client_id}/posts/${post.id}/${position}.jpg`,
+          url: "/x.jpg",
+          position,
+          width: 1080,
+          height: 1350,
+        });
+      }
+      return post;
+    };
+    const draftWithoutArt = () =>
+      getDB().posts.find(
+        (p) => p.status === "draft" && !getDB().media.some((m) => m.post_id === p.id),
+      )!;
+
+    it("refuses to release a post without art", async () => {
+      const post = draftWithoutArt();
+      await settleRejection(updatePost(post.id, { status: "ready" }), NEEDS_ART);
+      expect(getDB().posts.find((p) => p.id === post.id)!.status).toBe("draft");
+    });
+
+    it("derives the format from the arts and keeps the original publication record", async () => {
+      const post = draftWithArt();
+      const published = await settle(updatePost(post.id, { status: "published" }));
+      expect(published.format).toBe("carousel");
+      expect(published.published_by).toBe("admin");
+      getDB().posts.find((p) => p.id === post.id)!.published_at = "2026-01-01T00:00:00.000Z";
+      const again = await settle(
+        updatePost(post.id, { title: "Novo título", status: "published" }),
+      );
+      expect(again.published_at).toBe("2026-01-01T00:00:00.000Z");
+      expect(again.title).toBe("Novo título");
+    });
+
+    it("deletes only drafts, with their arts", async () => {
+      const draft = draftWithArt();
+      const ready = getDB().posts.find((p) => p.status !== "draft")!;
+      await settleRejection(deletePost(ready.id), DRAFT_ONLY);
+      expect(getDB().posts.some((p) => p.id === ready.id)).toBe(true);
+      await settle(deletePost(draft.id));
+      expect(getDB().posts.some((p) => p.id === draft.id)).toBe(false);
+      expect(getDB().media.some((m) => m.post_id === draft.id)).toBe(false);
+    });
   });
 });

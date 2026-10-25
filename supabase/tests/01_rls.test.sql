@@ -1,7 +1,7 @@
 -- C2 — isolamento entre clientes, rascunhos, notas, planos, RPCs e anon.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(47);
+select plan(48);
 
 -- Fixtures (como postgres) -------------------------------------------------
 -- A = cliente com conta; B = outra cliente com conta; ADM = equipe.
@@ -71,7 +71,8 @@ select throws_ok($$insert into public.clients (display_name, business_name, emai
   '42501', null, 'A não insere cliente');
 
 update public.posts set title = 'hack' where id = 'aaaaaaaa-0000-4000-8000-0000000000f1';
-update public.posts set status = 'ready' where id = 'aaaaaaaa-0000-4000-8000-0000000000f2';
+select throws_ok($$update public.posts set status = 'ready' where id = 'aaaaaaaa-0000-4000-8000-0000000000f2'$$,
+  '42501', null, 'A não escreve status direto (sem privilégio na coluna)');
 update public.clients set business_name = 'hack';
 update public.client_packages set posts_total = 99;
 update public.profiles set role = 'admin';

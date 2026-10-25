@@ -36,3 +36,9 @@ export const STATUS_SHORT_LABEL: Record<DisplayStatus, string> = {
 export function isClientVisible(post: Pick<Post, "status">) {
   return post.status !== "draft";
 }
+
+/** Only drafts can be deleted (published history is kept). */
+export const DRAFT_ONLY = "Só rascunhos podem ser excluídos.";
+
+/** Releasing a post (anything but draft) needs at least one art. */
+export const NEEDS_ART = "Envie ao menos uma arte antes de liberar para a cliente.";

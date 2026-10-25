@@ -1,4 +1,5 @@
 import { addDays, todayISO } from "@/lib/dates";
+import { DRAFT_ONLY, NEEDS_ART } from "@/lib/status";
 import { clone, commit, delay, getDB, uid } from "@/mocks/store";
 import type { Actor, Post, PostMedia, PostWithMedia } from "@/types/domain";
 
@@ -54,19 +55,38 @@ export type PostPatch = Partial<
 
 export async function updatePost(id: string, patch: PostPatch): Promise<PostWithMedia> {
   await delay();
-  const post = getDB().posts.find((p) => p.id === id);
+  const db = getDB();
+  const post = db.posts.find((p) => p.id === id);
   if (!post) throw new Error("Publicação não encontrada");
+  // Same rules as admin_set_post_status: releasing needs art, the format
+  // follows the number of arts, and a published post keeps its record.
+  const arts = db.media.filter((m) => m.post_id === id).length;
+  if (patch.status && patch.status !== "draft" && arts === 0) throw new Error(NEEDS_ART);
+  const wasPublished = post.status === "published";
   Object.assign(post, patch);
+  if (patch.status) post.format = arts > 1 ? "carousel" : "single";
   if (patch.status && patch.status !== "published") {
     post.published_at = null;
     post.published_by = null;
   }
-  if (patch.status === "published" && !post.published_at) {
+  if (patch.status === "published" && !wasPublished) {
     post.published_at = new Date().toISOString();
     post.published_by = "admin";
   }
   commit();
   return clone(withMedia(post));
+}
+
+/** Admin. Only drafts can be deleted; their arts go with them. */
+export async function deletePost(id: string): Promise<void> {
+  await delay();
+  const db = getDB();
+  const post = db.posts.find((p) => p.id === id);
+  if (!post) throw new Error("Publicação não encontrada");
+  if (post.status !== "draft") throw new Error(DRAFT_ONLY);
+  db.posts = db.posts.filter((p) => p.id !== id);
+  db.media = db.media.filter((m) => m.post_id !== id);
+  commit();
 }
 
 function postForActor(id: string, actor: Actor) {

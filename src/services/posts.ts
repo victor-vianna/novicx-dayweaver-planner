@@ -11,6 +11,7 @@ const impl = (): typeof mock => (isMockMode() ? mock : remote);
 export const listPosts: typeof mock.listPosts = (...args) => impl().listPosts(...args);
 export const getPost: typeof mock.getPost = (...args) => impl().getPost(...args);
 export const updatePost: typeof mock.updatePost = (...args) => impl().updatePost(...args);
+export const deletePost: typeof mock.deletePost = (...args) => impl().deletePost(...args);
 export const markPostPublished: typeof mock.markPostPublished = (...args) =>
   impl().markPostPublished(...args);
 export const unmarkPostPublished: typeof mock.unmarkPostPublished = (...args) =>
