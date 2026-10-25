@@ -255,13 +255,6 @@ export type Database = {
         };
         Relationships: [
           {
-            foreignKeyName: "post_events_actor_id_fkey";
-            columns: ["actor_id"];
-            isOneToOne: false;
-            referencedRelation: "profiles";
-            referencedColumns: ["id"];
-          },
-          {
             foreignKeyName: "post_events_client_id_fkey";
             columns: ["client_id"];
             isOneToOne: false;
