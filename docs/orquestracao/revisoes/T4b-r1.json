@@ -1,0 +1,114 @@
+{
+  "task_id": "T4b",
+  "round": 1,
+  "commit": "26c61190807abb2dc9b8165addd6a5345d0dbaf4",
+  "verdict": "changes_requested",
+  "acceptance": [
+    {
+      "criterion": "1. Criar, editar, arquivar/restaurar no mock; filtro e busca funcionam.",
+      "status": "verified",
+      "evidence": "ClientsView.test.tsx cobre criação, edição com changeClientEmail, erro de serviço, arquivamento/restauração, busca e filtros. Testes direcionados: 18/18 passaram."
+    },
+    {
+      "criterion": "2. Validação em client-form.ts; role=alert sem chamar serviço.",
+      "status": "verified",
+      "evidence": "client-form.test.ts cobre campos obrigatórios, espaços, formato e normalização do e-mail. O teste de tela confirma role=\"alert\" e createClient não chamado. Testes direcionados passaram."
+    },
+    {
+      "criterion": "3. Ciclo de acesso, link copiável e exclusão de contas de equipe.",
+      "status": "failed",
+      "evidence": "O fluxo mock está coberto e passa, mas no modo Supabase createAccess pode retornar link vazio após criar a conta (src/services/supabase/accounts.ts:46-47). ClientSheet.tsx:153-155 trata isso como sucesso e não exibe o campo, contrariando criar → link exibido."
+    },
+    {
+      "criterion": "4. Sem exclusão; arquivadas fora da lista padrão.",
+      "status": "verified",
+      "evidence": "Não há ação de exclusão no diff. ClientsView filtra por archived_at e o teste confirma que arquivadas desaparecem da lista Ativas e que nenhum botão de exclusão existe."
+    },
+    {
+      "criterion": "5. Mock createClient cria cliente sem conta.",
+      "status": "verified",
+      "evidence": "src/services/mock/clients.ts cria user_id vazio; src/services/clients.test.ts confirma getAccess=none e posterior createAccess. Teste passou."
+    },
+    {
+      "criterion": "6. Sem rolagem horizontal a 375 px.",
+      "status": "verified",
+      "evidence": "Contêineres usam min-w-0, flex-wrap e colunas apenas responsivas. O teste verifica uma coluna por padrão e ausência de larguras fixas superiores a 375 px."
+    },
+    {
+      "criterion": "7. npm test, tsc, lint e build verdes; serviço Supabase inalterado.",
+      "status": "not_verifiable",
+      "evidence": "tsc, lint, build pelo carregador nativo e todos os testes de src passaram. A suíte completa teve 228/231 testes aprovados; dois testes de orquestração falharam por spawn EPERM da sandbox e um por um diretório ignorado supabase/migrations/graft. A pasta de evidências informada não existe. Nenhum serviço Supabase foi alterado no diff."
+    }
+  ],
+  "checks": [
+    {
+      "command": "git rev-parse HEAD",
+      "result": "pass",
+      "summary": "HEAD corresponde exatamente a 26c61190807abb2dc9b8165addd6a5345d0dbaf4."
+    },
+    {
+      "command": "npx tsc --noEmit",
+      "result": "pass",
+      "summary": "Concluiu com código 0."
+    },
+    {
+      "command": "npm run lint",
+      "result": "pass",
+      "summary": "Código 0; 8 avisos preexistentes de react-refresh e nenhum erro."
+    },
+    {
+      "command": "npx vitest run --maxWorkers=2 src/features/admin/clients/ClientsView.test.tsx src/features/admin/clients/client-form.test.ts src/services/clients.test.ts",
+      "result": "fail",
+      "summary": "O carregador padrão não iniciou por spawn EPERM da sandbox."
+    },
+    {
+      "command": "node --import \"data:text/javascript,globalThis.__dirname%3Dprocess.cwd()%3B\" node_modules/vitest/vitest.mjs run --configLoader native --pool=threads --maxWorkers=2 src/features/admin/clients/ClientsView.test.tsx src/features/admin/clients/client-form.test.ts src/services/clients.test.ts",
+      "result": "pass",
+      "summary": "3 arquivos e 18 testes passaram."
+    },
+    {
+      "command": "npm test -- --maxWorkers=2",
+      "result": "fail",
+      "summary": "O carregador padrão não iniciou por spawn EPERM da sandbox."
+    },
+    {
+      "command": "node --import \"data:text/javascript,globalThis.__dirname%3Dprocess.cwd()%3B\" node_modules/vitest/vitest.mjs run --configLoader native --pool=threads --maxWorkers=2",
+      "result": "fail",
+      "summary": "32/34 arquivos e 228/231 testes passaram; duas falhas são spawn EPERM e uma é EISDIR causada pelo diretório ignorado supabase/migrations/graft, fora do diff."
+    },
+    {
+      "command": "node --import \"data:text/javascript,globalThis.__dirname%3Dprocess.cwd()%3B\" node_modules/vitest/vitest.mjs run --configLoader native --pool=threads --maxWorkers=2 src",
+      "result": "pass",
+      "summary": "28 arquivos e 120 testes de src passaram."
+    },
+    {
+      "command": "npm run build",
+      "result": "fail",
+      "summary": "O carregador padrão falhou por spawn EPERM e carregamento do binário nativo na sandbox."
+    },
+    {
+      "command": "node --import \"data:text/javascript,globalThis.__dirname%3Dprocess.cwd()%3B\" node_modules/vite/bin/vite.js build --configLoader native",
+      "result": "pass",
+      "summary": "Build cliente, SSR e Nitro/Vercel concluído com código 0."
+    },
+    {
+      "command": "git diff --check 8a682061bf5c1975c8575171ba7368ec428869f3..26c61190807abb2dc9b8165addd6a5345d0dbaf4",
+      "result": "pass",
+      "summary": "Nenhum erro de whitespace."
+    }
+  ],
+  "findings": [
+    {
+      "id": "T4b-R1-001",
+      "severity": "importante",
+      "file": "src/features/admin/clients/ClientSheet.tsx",
+      "line": 153,
+      "title": "Criação de acesso pode terminar sem exibir o link no modo Supabase",
+      "detail": "O contrato remoto admite sucesso parcial: se a conta for criada e recoveryLink falhar, createAccess retorna { userId, link: \"\" }. A mutation descarta userId, executa setLink(\"\") e mostra o toast \"Acesso criado.\". Como a renderização usa link && <AccessLink>, nenhum link aparece. Após a invalidação a conta fica ativa, portanto o botão Criar acesso também desaparece; a operadora precisa descobrir e acionar Gerar novo link, violando o fluxo exigido.",
+      "expected_fix": "Tratar explicitamente o link vazio. Por exemplo, usar o userId retornado para chamar resetAccess imediatamente e só anunciar sucesso quando houver link; se a segunda geração falhar, ainda atualizar o estado para conta ativa e mostrar uma mensagem clara com a ação Gerar novo link. Adicionar teste para o retorno { userId, link: \"\" }.",
+      "repro_test": "vi.spyOn(accounts, \"createAccess\").mockResolvedValueOnce({ userId: \"u-new\", link: \"\" });\nrenderView();\nawait openSheet(\"Camila Reis Consultoria\");\nfireEvent.click(screen.getByRole(\"button\", { name: \"Criar acesso\" }));\nexpect(await screen.findByLabelText(\"Link de acesso\")).toHaveValue(expect.stringMatching(/^https:/));",
+      "previous_id": ""
+    }
+  ],
+  "summary": "A implementação cobre bem o fluxo mock, validação, responsividade e arquivamento, mas não trata o sucesso parcial documentado de createAccess no Supabase e pode afirmar sucesso sem entregar o link. As verificações da aplicação passaram; a suíte integral ficou inconclusiva por limitações ambientais fora do diff. 🌱 trail saved ~16.1k tokens this turn."
+}

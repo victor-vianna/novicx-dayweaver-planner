@@ -37,3 +37,8 @@ A equipe cadastra, edita, arquiva/restaura clientes e gerencia o acesso delas nu
 ## Testes
 
 `src/features/admin/clients/*.test.ts(x)` (mock), `src/services/clients.test.ts`; suíte completa.
+
+## Rodada 2 (achados de `revisoes/T4b-r1.json`)
+
+- **T4b-R1-001:** `createAccess` com link vazio (conta criada, link falhou no Supabase) → a ficha chama `resetAccess(userId)` na hora; só anuncia sucesso com link; se falhar de novo, alerta com "Gerar novo link" disponível. Testes novos para os dois casos.
+- Critério 7 (`not_verifiable` na sandbox): evidências em `.orq/evidence/T4b/` (`npm-test-r2.log`, `tsc-r2.log`, `lint-r2.log`, `build-r2.log`, `r2-without-fix.log`).
