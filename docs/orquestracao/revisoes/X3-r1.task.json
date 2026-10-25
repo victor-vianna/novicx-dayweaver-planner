@@ -1,0 +1,55 @@
+{
+  "task_id": "X3",
+  "round": 1,
+  "status": "delivered",
+  "branch": "codex/ciclo-3",
+  "commits": [],
+  "files_changed": [
+    "src/routes/__root.tsx",
+    "src/test/root-status-pages.test.tsx",
+    "docs/ENTREGA-CODEX.md"
+  ],
+  "checks": [
+    {
+      "command": "npx vitest run --maxWorkers=2 src/test/root-status-pages.test.tsx",
+      "result": "not_run",
+      "summary": "A configuração não carregou devido a spawn EPERM na sandbox."
+    },
+    {
+      "command": "node --import \"data:text/javascript,globalThis.__dirname%3Dprocess.cwd()%3B\" node_modules/vitest/vitest.mjs run --configLoader native --pool=threads --maxWorkers=2 src/test/root-status-pages.test.tsx",
+      "result": "pass",
+      "summary": "1 arquivo e 2 testes passaram."
+    },
+    {
+      "command": "npx tsc --noEmit",
+      "result": "pass",
+      "summary": "Concluído sem erros."
+    },
+    {
+      "command": "npm run lint",
+      "result": "pass",
+      "summary": "Concluído sem erros; permaneceram 8 avisos preexistentes de Fast Refresh."
+    },
+    {
+      "command": "npm run build",
+      "result": "not_run",
+      "summary": "A configuração não carregou devido a spawn EPERM na sandbox."
+    },
+    {
+      "command": "npx vite build --configLoader native",
+      "result": "pass",
+      "summary": "Build client, SSR e Nitro/Cloudflare concluído; apenas avisos conhecidos do toolchain."
+    },
+    {
+      "command": "npx prettier --check src/routes/__root.tsx src/test/root-status-pages.test.tsx docs/ENTREGA-CODEX.md; git diff --check",
+      "result": "pass",
+      "summary": "Formatação e integridade do diff verificadas."
+    }
+  ],
+  "out_of_scope_requests": [],
+  "limitations": [
+    "Os comandos padrão do Vitest e do build foram impedidos por spawn EPERM; os fallbacks equivalentes com configLoader native passaram.",
+    "O cache local não versionado .trail/cache/ permanece fora da entrega e não deve ser incluído pelo coordenador."
+  ],
+  "summary": "404 e erro traduzidos para pt-BR, com retorno ao início, nova tentativa e nenhuma exposição de mensagem técnica ou stack trace. Testes cobrem os dois estados e suas ações; provider de autenticação e restante da rota raiz permaneceram inalterados. Trail poupou aproximadamente 15.298 tokens. Contexto iniciado pela nota de Victor sobre a orquestração do ciclo 3."
+}
