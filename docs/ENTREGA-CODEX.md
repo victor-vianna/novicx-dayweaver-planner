@@ -1,5 +1,28 @@
 # Entrega Codex — Ciclo 1
 
+## X3 — Páginas 404 e de erro em pt-BR
+
+- **Branch:** `codex/ciclo-3`
+- **Commits:** nenhum; o coordenador fará o commit do diff entregue.
+- **Mudanças:** as páginas 404 e de erro da rota raiz agora exibem título,
+  mensagem e ações em pt-BR. A tela de erro mantém somente uma mensagem segura
+  para o usuário, sem exibir mensagem técnica ou stack trace, e oferece tentar
+  novamente ou voltar ao início. O provider de autenticação e o restante da
+  rota raiz foram preservados.
+- **Testes:** `root-status-pages.test.tsx` cobre os textos e o link da página 404, os textos
+  e as duas ações da página de erro, o acionamento de `invalidate`/`reset` e a
+  ausência de mensagem técnica e stack trace na interface.
+- **Verificações:** o fallback do Vitest com `--configLoader native` passou com
+  1 arquivo e 2 testes; `npx tsc --noEmit` passou; `npm run lint` passou sem
+  erros e com os 8 avisos preexistentes de Fast Refresh; o build com
+  `--configLoader native` concluiu client, SSR e Nitro/Cloudflare.
+- **Limitações:** os comandos padrão do Vitest e do build não carregaram a
+  configuração por `spawn EPERM` na sandbox. Os fallbacks equivalentes com
+  `--configLoader native` passaram. O build manteve apenas os avisos já
+  conhecidos de `vite-tsconfig-paths` e `inlineDynamicImports`.
+- **Revisão do Claude:** confirmar que o diff em `__root.tsx` ficou restrito aos
+  componentes de 404/erro e reexecutar as verificações antes de integrar.
+
 ## X2 — A11y do menu mobile
 
 - **Branch:** `codex/ciclo-3`
