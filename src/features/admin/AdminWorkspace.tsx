@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Clock3, LayoutDashboard, PackageCheck, Send, Tags, Users } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { AdminMetric } from "@/components/common/MetricCards";
 import { DemoTag, ErrorState, SectionTitle } from "@/components/common/States";
@@ -10,6 +10,8 @@ import { PostListItem } from "@/components/post/PostListItem";
 import { ClientCard } from "@/features/admin/ClientCard";
 import { ClientsView } from "@/features/admin/clients/ClientsView";
 import { ClientDelivery } from "@/features/admin/delivery/ClientDelivery";
+import { activeClientIds } from "@/features/admin/metrics";
+import { type AdminView, readAdminNav, writeAdminNav } from "@/features/admin/navigation";
 import { PlansView } from "@/features/admin/plans/PlansView";
 import {
   adminActivePackagesQuery,
@@ -20,13 +22,17 @@ import {
 import { useAuth } from "@/features/auth/useAuth";
 import { greeting, todayISO } from "@/lib/dates";
 
-type AdminView = "overview" | "clients" | "plans";
-
 export function AdminWorkspace() {
-  const [view, setView] = useState<AdminView>("overview");
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [deliveryClientId, setDeliveryClientId] = useState<string | null>(null);
   const { session, startPreview } = useAuth();
+  const profileId = session?.profile.id;
+  // Survives a reload in the same tab (sessionStorage, per profile).
+  const [nav, setNav] = useState(() => readAdminNav(profileId));
+  const [menuOpen, setMenuOpen] = useState(false);
+  const { view, deliveryClientId } = nav;
+  const setView = (next: AdminView) => setNav({ view: next, deliveryClientId: null });
+  const setDeliveryClientId = (id: string | null) =>
+    setNav((n) => ({ ...n, deliveryClientId: id }));
+  useEffect(() => writeAdminNav(profileId, nav), [profileId, nav]);
   const clientsQuery = useQuery(adminClientsQuery(false));
   const packagesQuery = useQuery(adminActivePackagesQuery());
   const upcomingQuery = useQuery(adminUpcomingQuery());
@@ -59,7 +65,7 @@ export function AdminWorkspace() {
   const upcoming = upcomingQuery.data ?? [];
   const ending = endingQuery.data ?? [];
   const clientsById = new Map(clients.map((client) => [client.id, client]));
-  const activeClientIds = new Set(packages.map((item) => item.client_id));
+  const activeIds = activeClientIds(clients, packages);
 
   return (
     <AppFrame
@@ -105,7 +111,7 @@ export function AdminWorkspace() {
           </header>
 
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <AdminMetric icon={Users} value={clients.length} label="Clientes" />
+            <AdminMetric icon={Users} value={activeIds.size} label="Clientes ativas" />
             <AdminMetric icon={PackageCheck} value={packages.length} label="Pacotes ativos" />
             <AdminMetric icon={Send} value={upcoming.length} label="Próximas entregas" />
             <AdminMetric icon={Clock3} value={ending.length} label="Encerrando em breve" />
@@ -137,11 +143,11 @@ export function AdminWorkspace() {
                   </button>
                 }
               >
-                Clientes ativos
+                Clientes ativas
               </SectionTitle>
               <div className="space-y-3">
                 {clients
-                  .filter((client) => activeClientIds.has(client.id))
+                  .filter((client) => activeIds.has(client.id))
                   .map((client) => (
                     <ClientCard
                       key={client.id}
