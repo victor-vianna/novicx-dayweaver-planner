@@ -1,5 +1,27 @@
 # Entrega Codex — Ciclo 1
 
+## X10 — Bundle sem segredos
+
+- **Branch:** `codex/ciclo-3`
+- **Commits:** nenhum; o coordenador deve commitar o diff após a revisão.
+- **Mudanças:** `scripts/check-bundle.mjs` percorre as saídas publicáveis da
+  Vercel/Nitro e retorna 1 ao encontrar material privilegiado ou 2 quando não
+  há build. A lógica pura em `scripts/lib/bundle-scan.ts` detecta chaves
+  `sb_secret_`, JWT de `service_role`, o nome da variável privilegiada e chaves
+  privadas PEM, retornando apenas arquivo e tipo do achado.
+- **Testes:** `scripts/lib/bundle-scan.test.ts` cobre cada padrão, os valores
+  publicáveis permitidos, JWTs `anon`/`authenticated` e a ausência do valor
+  sensível nos achados e na mensagem formatada.
+- **Verificações:** o teste direcionado passou com 9 testes; TypeScript passou;
+  o lint passou sem erros e manteve os 8 avisos preexistentes de Fast Refresh.
+  Os builds `mock` e `supabase`, executados com `--configLoader native`, foram
+  escaneados com 132 arquivos cada e zero achados.
+- **Limitações:** o comando literal `npm run build` não carregou a configuração
+  por `spawn EPERM` na sandbox. O fallback nativo executou o mesmo pipeline nos
+  dois modos e concluiu os builds e escaneamentos.
+- **Revisão do Claude:** conferir os padrões de detecção, os códigos de saída
+  do comando e repetir os dois builds/escaneamentos antes de integrar.
+
 ## X8 — Build para a Vercel
 
 - **Branch:** `codex/ciclo-3`
