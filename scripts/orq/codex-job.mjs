@@ -1,6 +1,6 @@
 // Runs one Codex job (review or task) for the orchestration queue
 // (docs/orquestracao/ORQUESTRACAO.md §4). Run from the main worktree:
-//   node scripts/orq/codex-job.mjs --kind review --task T1 --round 1 --sha <sha> --base <sha> [--effort xhigh] [--resume] [--multi-agent]
+//   node scripts/orq/codex-job.mjs --kind review --task T1 --round 1 --sha <sha> --base <sha> [--paths a,b] [--effort xhigh] [--resume] [--multi-agent] [--extra-round]
 //   node scripts/orq/codex-job.mjs --kind task   --task X8 --round 1 [--base <sha>] [--effort high]
 // Logic lives in lib/job.ts; this file only wires real processes and files.
 // Codex is spawned as `node <codex.js>` with execFile (no shell: the path has

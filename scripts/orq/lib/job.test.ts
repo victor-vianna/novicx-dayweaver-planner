@@ -108,6 +108,26 @@ describe("parseArgs base", () => {
   });
 });
 
+describe("parseArgs extra round", () => {
+  const at = (round: number) => [
+    "--kind",
+    "review",
+    "--task",
+    "O0",
+    "--round",
+    String(round),
+    "--sha",
+    "abc1234",
+    "--base",
+    "924c26e",
+  ];
+  it("allows exactly one round past the limit with --extra-round", () => {
+    expect(() => parseArgs(at(4))).toThrow(/limit of 3/);
+    expect(parseArgs([...at(4), "--extra-round"]).round).toBe(4);
+    expect(() => parseArgs([...at(5), "--extra-round"])).toThrow(/limit of 4/);
+  });
+});
+
 describe("parseArgs paths", () => {
   const review = [
     "--kind",

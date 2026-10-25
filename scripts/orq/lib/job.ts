@@ -37,7 +37,10 @@ export function parseArgs(argv: string[]): JobArgs {
   if (!/^[A-Z]{1,3}\d{0,2}[a-z]?$/.test(task)) throw new Error(`Invalid --task: "${task}".`);
   const round = Number(get("round"));
   if (!Number.isInteger(round) || round < 1) throw new Error("--round must be an integer ≥ 1.");
-  if (round > MAX_ROUND) throw new Error(`Round ${round} exceeds the limit of ${MAX_ROUND}.`);
+  // --extra-round: one round past the limit, only after an explicit human "yes"
+  // recorded in FILA.md (ORQUESTRACAO §5). Never more than one.
+  const limit = argv.includes("--extra-round") ? MAX_ROUND + 1 : MAX_ROUND;
+  if (round > limit) throw new Error(`Round ${round} exceeds the limit of ${limit}.`);
   const sha = get("sha") ?? "";
   if (kind === "review" && !/^[0-9a-f]{7,40}$/.test(sha)) {
     throw new Error("--sha (hex commit) is required for reviews.");
